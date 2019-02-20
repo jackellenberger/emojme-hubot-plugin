@@ -1,0 +1,31 @@
+{
+  "name": "emojme-hubot-plugin",
+  "version": "0.1.0",
+  "description": "a hubot script to run emojme tasks from slack",
+  "main": "index.coffee",
+  "scripts": {
+    "test": "grunt test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jackellenberger/emojme-hubot-plugin.git"
+  },
+  "keywords": [
+    "emojme",
+    "hubot",
+    "slack",
+    "emoji"
+  ],
+  "author": "Jack Ellenberger <jellenberger@uchicago.edu>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jackellenberger/emojme-hubot-plugin/issues"
+  },
+  "homepage": "https://github.com/jackellenberger/emojme-hubot-plugin#readme",
+  "dependencies": {
+    "emojme": "^1.6.1"
+  },
+  "peerDependencies": {
+    "hubot": "^3.3.0"
+  }
+}
