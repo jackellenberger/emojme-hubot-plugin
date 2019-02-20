@@ -15,19 +15,18 @@ emojme = require 'emojme'
 module.exports = (robot) ->
   robot.respond /emojme (?:authenticate|log in|refresh)\s*(.*)/, (context) ->
     token = context.match[1]
-    message = context.message.TextMessage
-    isPrivate = message.user.name === message.room
+    isPrivate = context.message.user.name == context.message.room
     if token
       if !isPrivate # delete that message, keep tokens out of public chat
-        slack.chat.delete({token: token, channel: message.room, ts: message.id})
-        return context.respond("Don't go posting auth tokens in public channels now, ya hear?")
+        slack.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
+        return context.send("Don't go posting auth tokens in public channels now, ya hear?")
       else # log in with the provided token
-        context.respond("Logging you in")
+        context.send("Logging you in")
         # TODO Save token, username, timestamp to brain
         # TODO download adminlist to brain
     else
       # TODO user, timestamp = brain.getEmojmeAuth
-      context.respond("#{user} last refreshed the emoji list back at #{timestamp}")
+      context.send("#{user} last refreshed the emoji list back at #{timestamp}")
 
   robot.respond /emojme who made (.*)/, (emojiName) ->
     console.log(emojiName)
