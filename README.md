@@ -5,17 +5,28 @@ A hubot script to call [emojme](https://github.com/jackellenberger/emojme) plugi
 ## Commands
 
 * hubot emojme status - print the age of the cache and who last updated it
+
   `<user> last refreshed the emoji list back at <date> when there were <emoji count> emoji`
+  
 * hubot refresh with my super secret user token that i will not post in any public channels <token> - authenticate with user token if given (only works in private DMs)
+  
   `Updating emoji database, this may take a few moments...`
   `emoji database refresh complete`
+  
 * hubot emojme list emoji (metadata)? - upload a list of emoji names, or emoji metadata if requested
+
   `here are all emoji as of <date>` `file attachment`
+  
 * hubot emojme who made <emoji> - give the provided emoji's author.
+  
   `That would be one <author>`
+  
 * hubot emojme tell me about <emoji> - give the provided emoji's metadata
+  
   `Ah, :<emoji>:, i know it well` `emoji metadata`
+  
 * hubot emojme how many emoji has <author> made? - give the provided author's emoji statistics.
+  
   `looks like <author> has <total> emoji, <original> originals, and <aliases> aliases`
 
 ## Installation
