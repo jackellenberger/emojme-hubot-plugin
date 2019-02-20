@@ -92,7 +92,7 @@ module.exports = (robot) ->
       if emojiList = adminList.filter((emoji) -> emoji.user_display_name == author)
         originals = emojiList.filter((emoji) -> emoji.is_alias == 0).length
         total = emojiList.length
-        context.send("Looks like #{author} has #{total} emoji, #{originals} originals and #{total - originals} aliases")
+        context.send("Looks like #{author} has #{total} emoji, #{originals} originals, and #{total - originals} aliases")
       else
         context.send("I don't know about that author, are they real? If they have a new display name, try re authenticating with emojme refresh <token> in a DM with me")
     else
