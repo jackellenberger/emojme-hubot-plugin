@@ -2,7 +2,8 @@
 #   A way to interact with emojme functions
 #
 # Commands:
-#   hubot emojme (authenticate|log in|refresh) <user token?> - authenticate with user token if given, otherwise print who is logged in and how long they have been logged for.
+#   hubot emojme status - print the age of the cache and who last updated it
+#   hubot refresh with my super secret user token that i will not post in any public channels <token> - authenticate with user token if given
 #   hubot emojme list emoji (metadata)? - upload a list of emoji names, or emoji metadata if requested
 #   hubot emojme who made <emoji> - give the provided emoji's author.
 #   hubot emojme tell me about <emoji> - give the provided emoji's metadata
@@ -14,29 +15,37 @@ slack = require 'slack'
 emojme = require 'emojme'
 
 module.exports = (robot) ->
-  robot.respond /emojme (?:authenticate|log in|refresh)\s*(.*)?/, (context) ->
+  robot.respond /emojme status/, (context) ->
+    if (
+      (lastUser = robot.brain.get('emojmeAuthUser')) &&
+      (lastRefresh = robot.brain.get('emojmeLastUpdatedAt')) &&
+      (emojiList = robot.brain.get('emojmeAdminList'))
+    )
+      context.send("#{lastUser} last refreshed the emoji list back at #{robot.brain.get('emojmeLastUpdatedAt')} when there were #{emojiList.length} emoji")
+    else
+      context.send("Looks like there's no emoji cache, you'll have to reauthenticate")
+
+
+  robot.respond /emojme refresh with my super secret user token that i will not post in any public channels (.*)/, (context) ->
     token = context.match[1]
     isPrivate = context.message.user.name == context.message.room
-    if token
-      if !isPrivate # delete that message, keep tokens out of public chat
-        slack.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
-        context.send("Don't go posting auth tokens in public channels now, ya hear?")
-        return
-      else # log in with the provided token
-        context.send("Updating emoji database, this may take a few moments...")
-        downloadOptions = {output: true}
-        emojme.download(process.env.HUBOT_SLACK_TEAM, token, downloadOptions)
-          .then (adminList) =>
-            robot.brain.set 'emojmeAuthUser', context.message.user.name
-            robot.brain.set 'emojmeLastUpdatedAt', Date(Date.now()).toString()
-            robot.brain.set 'emojmeAuthToken', token
-            robot.brain.set 'emojmeAdminList', adminList[process.env.HUBOT_SLACK_TEAM].emojiList
-            context.send("emoji database refresh complete.")
-          .catch (e) ->
-            console.log(e)
-            context.send("looks like something went wrong, is your token correct?")
-    else
-      context.send("#{robot.brain.get('emojmeAuthUser')} last refreshed the emoji list back at #{robot.brain.get('emojmeLastUpdatedAt')}")
+    if !isPrivate # delete that message, keep tokens out of public chat
+      slack.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
+      context.send("Don't go posting auth tokens in public channels ya dummy")
+      return
+    else # log in with the provided token
+      context.send("Updating emoji database, this may take a few moments...")
+      downloadOptions = {output: true}
+      emojme.download(process.env.HUBOT_SLACK_TEAM, token, downloadOptions)
+        .then (adminList) =>
+          robot.brain.set 'emojmeAuthUser', context.message.user.name
+          robot.brain.set 'emojmeLastUpdatedAt', Date(Date.now()).toString()
+          robot.brain.set 'emojmeAuthToken', token
+          robot.brain.set 'emojmeAdminList', adminList[process.env.HUBOT_SLACK_TEAM].emojiList
+          context.send("emoji database refresh complete.")
+        .catch (e) ->
+          console.log(e)
+          context.send("looks like something went wrong, is your token correct?")
 
 
   robot.respond /emojme list emoji\s*(metadata)?/, (context) ->
