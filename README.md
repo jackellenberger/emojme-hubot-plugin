@@ -19,10 +19,9 @@ Then add **emojme-hubot-plugin** to your `external-scripts.json`:
 # Testing
 
 ```sh
-# install coffee
-npm install coffee
-# update your path
-export PATH="node_modules/.bin:node_modules/hubot/node_modules/.bin:$PATH"
-# run the bot
-./node_modules/.bin/hubot --adapter shell -l dog "$@"
+nvm use 10 && npm install
+npm link
+cd ../your-hubot-core
+npm link emojme-hubot-plugin
+./bin/hubot-test # or whatever your startup command is
 ```
