@@ -13,6 +13,9 @@
 emojme = require "emojme"
 
 module.exports = (robot) ->
+  robot.respond /emojme ping/, () ->
+    console.log(pong)
+
   robot.respond /emojme authenticat(?:e|ion)\s*(.*)/, (maybeToken) ->
     console.log(maybeToken)
 
