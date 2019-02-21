@@ -86,20 +86,20 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
     require_cache context, (emojiList, lastUser, lastRefresh) ->
       author = context.match[1]
       find_author context, emojiList, author, (authorsEmoji) ->
-        if authorsEmoji.length > 25
+        console.log(authorsEmoji.length)
+        if authorsEmoji.length < 25
+          console.log('here')
           context.send(authorsEmoji.map((emoji) -> ":#{emoji.name}:").join(" "))
         else
+          console.log('there')
           try
-            response = robot.adapter.client.web.chat.postMessage(
-              context.message.user.room,
-              context.send("#{author} has like #{authorsEmoji.length} emoji, I'm gonna thread this")
-            )
+            context.send("#{author} has like #{authorsEmoji.length} emoji, I'm gonna thread this")
             index = 0
             while index < authorsEmoji.length
               robot.adapter.client.web.chat.postMessage(
                 context.message.user.room,
                 authorsEmoji.slice(index, index+100).map((emoji) -> ":#{emoji.name}:").join(" "),
-                {thread_ts: response.message.id}
+                {thread_ts: context.message.id}
               )
               index += 100
           catch
