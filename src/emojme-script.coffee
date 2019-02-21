@@ -8,6 +8,7 @@
 #   hubot emojme who made <emoji> - give the provided emoji's author.
 #   hubot emojme tell me about <emoji> - give the provided emoji's metadata
 #   hubot emojme how many emoji has <author> made? - give the provided author's emoji statistics.
+#   hubot emojme show me the emoji <author> made - give the provided author's emoji
 #
 # Author:
 #   Jack Ellenberger <jellenberger@uchicago.edu>
@@ -97,3 +98,22 @@ module.exports = (robot) ->
         context.send("I don't know about that author, are they real? If they have a new display name, try re authenticating with emojme refresh <token> in a DM with me")
     else
       context.send("Looks like we don't have anything cached, try re authenticating with emojme refresh <token> in a DM with me")
+
+
+  robot.respond /emojme show me the emoji (.*) made/, (context) ->
+    console.log(context.match[1])
+    if (adminList = robot.brain.get 'emojmeAdminList') && (author = context.match[1])
+      if emojiList = adminList.filter((emoji) -> emoji.user_display_name == author)
+        index = 0
+        while index < emojiList.length
+          robot.adapter.client.web.chat.postMessage(
+            context.message.user.room,
+            emojiList.slice(index, index+100).map((emoji) -> ':' + emoji.name + ':').join(" "),
+            {thread_ts: context.message.id}
+          )
+          index += 100
+      else
+        context.send("I don't know about that author, are they real? If they have a new display name, try re authenticating with emojme refresh <token> in a DM with me")
+    else
+      context.send("Looks like we don't have anything cached, try re authenticating with emojme refresh <token> in a DM with me")
+
