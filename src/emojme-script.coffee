@@ -86,12 +86,9 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
     require_cache context, (emojiList, lastUser, lastRefresh) ->
       author = context.match[1]
       find_author context, emojiList, author, (authorsEmoji) ->
-        console.log(authorsEmoji.length)
         if authorsEmoji.length < 25
-          console.log('here')
           context.send(authorsEmoji.map((emoji) -> ":#{emoji.name}:").join(" "))
         else
-          console.log('there')
           try
             context.send("#{author} has like #{authorsEmoji.length} emoji, I'm gonna thread this")
             index = 0
@@ -123,12 +120,15 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
       context.send("I don't recognize :#{emojiName}:, if it exists, my cache might need a refresh. Call `emojme how do` to find out how")
 
   find_author = (context, emojiList, authorName, action) ->
-    if authorsEmoji = emojiList.filter((emoji) -> emoji.user_display_name == authorName)
-      action(authorsEmoji)
+    if (authorsEmoji = emojiList.filter((emoji) -> emoji.user_display_name == authorName)
+      if authorsEmoji.length > 0
+        action(authorsEmoji)
+      else
+        context.send("Okay I know #{authorName}, we all know em, they're good people, but they don't have any emoji. No excuse for that.")
     else
       context.send("""
 I don't know \"#{authorName}\", is that still their name on Slack?
-If they have a new display name,
+If they have a new display name, maybe refresh the cache? Call `emojme how do` to find out how.
 """)
 
 
