@@ -120,7 +120,7 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
       context.send("I don't recognize :#{emojiName}:, if it exists, my cache might need a refresh. Call `emojme how do` to find out how")
 
   find_author = (context, emojiList, authorName, action) ->
-    if (authorsEmoji = emojiList.filter((emoji) -> emoji.user_display_name == authorName)
+    if authorsEmoji = emojiList.filter((emoji) -> emoji.user_display_name == authorName)
       if authorsEmoji.length > 0
         action(authorsEmoji)
       else
@@ -130,5 +130,3 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
 I don't know \"#{authorName}\", is that still their name on Slack?
 If they have a new display name, maybe refresh the cache? Call `emojme how do` to find out how.
 """)
-
-
