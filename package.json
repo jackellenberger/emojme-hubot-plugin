@@ -16,6 +16,9 @@
     "slack",
     "emoji"
   ],
+  "engines": {
+    "node": "10.x"
+  },
   "author": "Jack Ellenberger <jellenberger@uchicago.edu>",
   "license": "ISC",
   "bugs": {
