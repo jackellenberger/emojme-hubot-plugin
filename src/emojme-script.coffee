@@ -15,8 +15,14 @@
 #   Jack Ellenberger <jellenberger@uchicago.edu>
 slack = require 'slack'
 emojme = require 'emojme'
+{ createMessageAdapter } = require '@slack/interactive-messages'
+adapter = createMessageAdapter(process.env.SLACK_VERIFICATION_TOKEN)
+
 
 module.exports = (robot) ->
+  #
+  # Commands
+  #
   robot.respond /emojme how do/, (context) ->
     context.send("""
 Hey! [emojme](https://github.com/jackellenberger/emojme) is a project to mess with slack emoji.
@@ -102,7 +108,46 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
           catch
             context.send("Ahh I can't do it, something's wrong")
 
+  robot.respond /emojme log me in/, (context) ->
+    response = robot.adapter.client.web.chat.postMessage(
+      context.message.user.room,
+      "here's an interactive prompt i hope",
+      attachments: [{
+        text: 'give me permission?',
+        callback_id: 'emojme_permission',
+        actions: [{
+          name: 'accept',
+          text: 'yes',
+          value: 'accept',
+          type: 'button',
+          style: 'primary'
+        },{
+          name: 'accept',
+          text: 'no',
+          value: 'deny',
+          type: 'button',
+          style: 'danger'
+        }]
+      }]
+    ).then (response) =>
+      console.log(response)
+    .catch (err) ->
+      console.log('error!')
+      console.log(err)
+
+  #
+  # Interaction Handlers
+  #
+  robot.router.use('/slack/actions', adapter.expressMiddleware())
+  adapter.action 'emojme_permission', (payload, respond) ->
+    action = payload.actions[0]
+    select = action.selected_options[0]
+    robot.logger.debug 'handle welcome action with payload: ' + payload
+    console.log(action)
+    console.log(select)
+  #
   # Helpers
+  #
   require_cache = (context, action) ->
     if (
       (emojiList = robot.brain.get 'emojmeAdminList' ) &&

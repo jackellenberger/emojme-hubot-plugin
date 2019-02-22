@@ -26,6 +26,7 @@
   },
   "homepage": "https://github.com/jackellenberger/emojme-hubot-plugin#readme",
   "dependencies": {
+    "@slack/interactive-messages": "^1.0.2",
     "emojme": "^1.6.1",
     "slack": "^11.0.2"
   },
