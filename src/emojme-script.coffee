@@ -10,7 +10,9 @@
 #   hubot emojme tell me about <emoji> - give the provided emoji's metadata
 #   hubot emojme how many emoji has <author> made? - give the provided author's emoji statistics.
 #   hubot emojme show me the emoji <author> made - give the provided author's emoji
-#   hubot emojme :gavel: <emoji> commit this to the record: <message> - save the provided message to emoji's record
+#   hubot emojme commit this to the record of <emoji>: <message> - save an explanation for the given emoji
+#   hubot emojme what does the record state about <emoji>? - read the emoji's explanation if it exists
+#   hubot emojme what emoji are documented? - give the names of all documented emoji
 #
 # Author:
 #   Jack Ellenberger <jellenberger@uchicago.edu>
@@ -43,10 +45,10 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
       context.send("Updating emoji database, this may take a few moments...")
       emojme.download(slack_instance, token, {})
         .then (adminList) =>
-          robot.brain.set 'emojmeAuthUser', context.message.user.name
-          robot.brain.set 'emojmeLastUpdatedAt', Date(Date.now()).toString()
-          robot.brain.set 'emojmeAuthToken', token
-          robot.brain.set 'emojmeAdminList', adminList[Object.keys(adminList)[0]].emojiList
+          robot.brain.set 'emojme.AuthUser', context.message.user.name
+          robot.brain.set 'emojme.LastUpdatedAt', Date(Date.now()).toString()
+          robot.brain.set 'emojme.AuthToken', token
+          robot.brain.set 'emojme.AdminList', adminList[Object.keys(adminList)[0]].emojiList
           context.send("emoji database refresh complete.")
         .catch (e) ->
           console.log(e)
@@ -65,15 +67,17 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
       catch
         context.send("I have like #{adminList.length} emoji but I'm having a hard time uploading them.")
 
+  robot.respond /emojme tell me about (.*)/, (context) ->
+    require_cache context, (emojiList, lastUser, lastRefresh) ->
+      find_emoji context, emojiList, context.match[1].replace(/:/g,''), (emoji) ->
+        find_archive_entry emoji.name, (archive_entry) ->
+          emoji.archive_entry = archive_entry
+        context.send("Ah, :#{emoji.name}:, I know it well...\n```#{JSON.stringify(emoji, null, 2)}```")
+
   robot.respond /emojme who made (.*)/, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
       find_emoji context, emojiList, context.match[1].replace(/:/g,''), (emoji) ->
         context.send("That would be #{emoji.user_display_name}")
-
-  robot.respond /emojme tell me about (.*)/, (context) ->
-    require_cache context, (emojiList, lastUser, lastRefresh) ->
-      find_emoji context, emojiList, context.match[1].replace(/:/g,''), (emoji) ->
-        context.send("Ah, :#{emoji.name}:, I know it well...\n```#{JSON.stringify(emoji, null, 2)}```")
 
   robot.respond /emojme how many emoji has (.*) made?/, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
@@ -103,22 +107,41 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
           catch
             context.send("Ahh I can't do it, something's wrong")
 
-  robot.respond /emojme :gavel: (.*) commit this to the record: (.*)/, (context) ->
+  robot.respond /emojme commit this to the record of (.*): (.*)/, (context) ->
     emoji_name = context.match[1].replace(/:/g, '')
     message = context.match[2]
-    # TODO: actually save this
+    find_archive_entry emoji_name, (existing_entry) ->
+      if existing_entry
+        context.send("Overwriting previous interpretation of :#{emoji_name}:: #{existing_entry}")
+    save_archive_entry emoji_name, message
     robot.adapter.client.web.reactions.add("gavel", {
       channel: context.message.user.room,
       timestamp: context.message.id
     })
 
+  robot.respond /emojme what does the (?:record|archive) (?:state|say) (?:about|for) (.*)\?/, (context) ->
+    emoji_name = context.match[1].replace(/:/g, '')
+    find_archive_entry emoji_name, (existing_entry) ->
+      if existing_entry
+        context.send("\"#{existing_entry}\"")
+      else
+        context.send("Nothing! https://i.kym-cdn.com/photos/images/original/000/721/333/5d1.gif")
+
+  robot.respond /emojme (?:which|what|how many) emoji are documented?/, (context) ->
+    emoji_archive = robot.brain.get "emojme.emojiArchive"
+    emoji_archive ?= {}
+    names = Object.keys(emoji_archive)
+    emoji = if names.length == 0 then ":shrug:" else names.map((name) => ":#{name}:")
+    context.send("Looks like we got explanations for #{names.length} emoji #{emoji}")
+    if names.length < 10
+      context.send("Jimmy Wales says if we all wrote one emoji explanation we'd have a lot more explanations than this\nhttps://i.kym-cdn.com/entries/icons/original/000/004/510/Jimmeh.jpg")
 
   # Helpers
   require_cache = (context, action) ->
     if (
-      (emojiList = robot.brain.get 'emojmeAdminList' ) &&
-      (lastUser = robot.brain.get 'emojmeAuthUser' ) &&
-      (lastRefresh = robot.brain.get 'emojmeLastUpdatedAt' )
+      (emojiList = robot.brain.get 'emojme.AdminList' ) &&
+      (lastUser = robot.brain.get 'emojme.AuthUser' ) &&
+      (lastRefresh = robot.brain.get 'emojme.LastUpdatedAt' )
     )
       action(emojiList, lastUser, lastRefresh)
     else
@@ -141,6 +164,18 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
 I don't know \"#{authorName}\", is that still their name on Slack?
 If they have a new display name, maybe refresh the cache? Call `emojme how do` to find out how.
 """)
+
+  find_archive_entry = (emoji_name, action) ->
+    emoji_archive = robot.brain.get "emojme.emojiArchive"
+    emoji_archive ?= {}
+    action(emoji_archive[emoji_name])
+
+  save_archive_entry = (emoji_name, message, action) ->
+    emoji_archive = robot.brain.get "emojme.emojiArchive"
+    emoji_archive ?= {}
+    emoji_archive[emoji_name] = message
+    robot.brain.set "emojme.emojiArchive", emoji_archive
+
 
   # hubot emojme :gavel: <emoji> <link to message> - save the provided message to emoji's record
   # # Requires find_message, which isn't workable with a bot token
