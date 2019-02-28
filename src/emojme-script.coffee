@@ -10,7 +10,6 @@
 #   hubot emojme tell me about <emoji> - give the provided emoji's metadata
 #   hubot emojme how many emoji has <author> made? - give the provided author's emoji statistics.
 #   hubot emojme show me the emoji <author> made - give the provided author's emoji
-#   hubot emojme :gavel: <emoji> <link to message> - save the provided message to emoji's record
 #   hubot emojme :gavel: <emoji> commit this to the record: <message> - save the provided message to emoji's record
 #
 # Author:
@@ -104,18 +103,6 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
           catch
             context.send("Ahh I can't do it, something's wrong")
 
-  robot.respond /emojme :gavel: (.*) https:\/\/(?:.*).slack.com\/archives\/(.*)\/p([0-9]{16})/, (context) ->
-    emoji_name = context.match[1].replace(/:/g, '')
-    channel = context.match[2]
-    timestamp = context.match[3]
-    find_message context, channel, timestamp, (message) ->
-      context.send("Got it, saving #{emoji_name} to the archive with \"#{message.text}\"")
-      # TODO: actually save this
-      robot.adapter.client.web.reactions.add("gavel", {
-        channel,
-        timestamp
-      })
-
   robot.respond /emojme :gavel: (.*) commit this to the record: (.*)/, (context) ->
     emoji_name = context.match[1].replace(/:/g, '')
     message = context.match[2]
@@ -155,14 +142,29 @@ I don't know \"#{authorName}\", is that still their name on Slack?
 If they have a new display name, maybe refresh the cache? Call `emojme how do` to find out how.
 """)
 
-  find_message = (context, channel, ts, action) ->
-    robot.adapter.client.web.channels.history(channel, {
-      count: 1,
-      inclusive: true,
-      latest: ts
-    })
-      .then (result, err) =>
-        action(result.messages[0])
-      .catch (e) ->
-        console.log(JSON.stringify(e, null, 2))
-        context.send("Unable to find that message. Maybe try specifying that info nugget explicity?")
+  # hubot emojme :gavel: <emoji> <link to message> - save the provided message to emoji's record
+  # # Requires find_message, which isn't workable with a bot token
+  # robot.respond /emojme :gavel: (.*) https:\/\/(?:.*).slack.com\/archives\/(.*)\/p([0-9]{16})/, (context) ->
+  #   emoji_name = context.match[1].replace(/:/g, '')
+  #   channel = context.match[2]
+  #   timestamp = context.match[3]
+  #   find_message context, channel, timestamp, (message) ->
+  #     context.send("Got it, saving #{emoji_name} to the archive with \"#{message.text}\"")
+  #     # TODO: actually save this
+  #     robot.adapter.client.web.reactions.add("gavel", {
+  #       channel,
+  #       timestamp
+  #     })
+
+  # # Not currently possible with bot tokens :(
+  # find_message = (context, channel, ts, action) ->
+  #   robot.adapter.client.web.channels.history(channel, {
+  #     count: 1,
+  #     inclusive: true,
+  #     latest: ts
+  #   })
+  #     .then (result, err) =>
+  #       action(result.messages[0])
+  #     .catch (e) ->
+  #       console.log(JSON.stringify(e, null, 2))
+  #       context.send("Unable to find that message. Maybe try specifying that info nugget explicity?")
