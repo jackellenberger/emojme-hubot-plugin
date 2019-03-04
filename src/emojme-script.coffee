@@ -4,7 +4,7 @@
 # Commands:
 #   hubot emojme how do - a little explainer on how to use emojme
 #   hubot emojme status - print the age of the cache and who last updated it
-#   hubot emojme refresh with my super secret user token that i will not post in any public channels: <token> - authenticate with user token if given
+#   hubot emojme refresh with my super secret user token that i will not post in any public channels: <token> - authenticate with user token. Must be done in a private chat with hubot. Required for downloading up to date emoji data.
 #   hubot emojme list emoji (metadata)? - upload a list of emoji names, or emoji metadata if requested
 #   hubot emojme who made <emoji> - give the provided emoji's author.
 #   hubot emojme tell me about <emoji> - give the provided emoji's metadata
