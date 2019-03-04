@@ -63,3 +63,7 @@ typings/
 
 # hubot
 .hubot_history
+
+# emojme
+log
+build
