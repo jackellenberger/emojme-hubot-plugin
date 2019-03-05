@@ -49,6 +49,7 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
           robot.brain.set 'emojme.LastUpdatedAt', Date(Date.now()).toString()
           robot.brain.set 'emojme.AdminList', adminList[Object.keys(adminList)[0]].emojiList
           context.send("emoji database refresh complete. Let me clean that up for you.")
+          console.log("deleting message #{context.message.id} from channel #{context.message.room}")
           slack.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
         .catch (e) ->
           console.log(e)
