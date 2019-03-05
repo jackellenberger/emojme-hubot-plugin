@@ -39,7 +39,7 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
     token = context.match[2]
     if context.message.room[0] != 'D' # delete that message, keep tokens out of public chat
       slack.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
-      context.send("Don't go posting auth tokens in public channels ya dummy")
+      context.send("Don't go posting auth tokens in public channels ya dummy. Delete that or I'm telling mom.")
       return
     else # log in with the provided token
       context.send("Updating emoji database, this may take a few moments...")
@@ -48,7 +48,8 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
           robot.brain.set 'emojme.AuthUser', context.message.user.name
           robot.brain.set 'emojme.LastUpdatedAt', Date(Date.now()).toString()
           robot.brain.set 'emojme.AdminList', adminList[Object.keys(adminList)[0]].emojiList
-          context.send("emoji database refresh complete.")
+          robot.brain.save()
+          context.send("emoji database refresh complete. Probably oughta clean that token up tho.")
         .catch (e) ->
           console.log(e)
           context.send("looks like something went wrong, is your token correct?")
@@ -68,22 +69,25 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
 
   robot.respond /emojme tell me about (.*)/, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
-      find_emoji context, emojiList, context.match[1].replace(/:/g,''), (emoji) ->
+      find_emoji context, emojiList, context.match[1].replace(/:/g,''), (emoji, _) ->
         find_archive_entry emoji.name, (archive_entry) ->
           emoji.archive_entry = archive_entry
         context.send("Ah, :#{emoji.name}:, I know it well...\n```#{JSON.stringify(emoji, null, 2)}```")
 
   robot.respond /emojme who made (.*)/, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
-      find_emoji context, emojiList, context.match[1].replace(/:/g,''), (emoji) ->
-        context.send("That would be #{emoji.user_display_name}")
+      find_emoji context, emojiList, context.match[1].replace(/:/g,''), (emoji, original) ->
+        message = "That would be #{emoji.user_display_name}"
+        if original
+          message += ", but #{original.user_display_name} made the original, `:#{original.name}:`"
+        context.send(message)
 
   robot.respond /emojme how many emoji has (.*) made?/, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
       author = context.match[1]
       find_author context, emojiList, author, (authorsEmoji) ->
         total = authorsEmoji.length
-        originals = authorsEmoji.filter((emoji) -> emoji.is_alias == 0).length
+        originals = authorsEmoji.filter((emoji) -> emoji.is_alias == 1).length
         context.send("Looks like #{author} has #{total} emoji, #{originals} originals and #{total - originals} aliases")
 
   robot.respond /emojme show me the emoji (.*) made/, (context) ->
@@ -148,7 +152,11 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
 
   find_emoji = (context, emojiList, emojiName, action) ->
     if typeof emojiName != 'undefined' && (emoji = emojiList.find((emoji) -> emoji.name == emojiName))
-      action(emoji)
+      original_name = emoji.alias_for
+      if original_name && (original_emoji = emojiList.find((emoji) -> emoji.name == original_name))
+        action(emoji, original_emoji)
+      else
+        action(emoji)
     else
       context.send("I don't recognize :#{emojiName}:, if it exists, my cache might need a refresh. Call `emojme how do` to find out how")
 
