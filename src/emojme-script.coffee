@@ -48,7 +48,8 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
           robot.brain.set 'emojme.AuthUser', context.message.user.name
           robot.brain.set 'emojme.LastUpdatedAt', Date(Date.now()).toString()
           robot.brain.set 'emojme.AdminList', adminList[Object.keys(adminList)[0]].emojiList
-          context.send("emoji database refresh complete.")
+          context.send("emoji database refresh complete. Let me clean that up for you.")
+          slack.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
         .catch (e) ->
           console.log(e)
           context.send("looks like something went wrong, is your token correct?")
@@ -68,15 +69,17 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
 
   robot.respond /emojme tell me about (.*)/, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
-      find_emoji context, emojiList, context.match[1].replace(/:/g,''), (emoji) ->
+      find_emoji context, emojiList, context.match[1].replace(/:/g,''), (emoji, _) ->
         find_archive_entry emoji.name, (archive_entry) ->
           emoji.archive_entry = archive_entry
         context.send("Ah, :#{emoji.name}:, I know it well...\n```#{JSON.stringify(emoji, null, 2)}```")
 
   robot.respond /emojme who made (.*)/, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
-      find_emoji context, emojiList, context.match[1].replace(/:/g,''), (emoji) ->
+      find_emoji context, emojiList, context.match[1].replace(/:/g,''), (emoji, original) ->
         context.send("That would be #{emoji.user_display_name}")
+        if original
+          context.send("But #{original.user_display_name} made the original, #{original.name}")
 
   robot.respond /emojme how many emoji has (.*) made?/, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
@@ -148,7 +151,11 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
 
   find_emoji = (context, emojiList, emojiName, action) ->
     if typeof emojiName != 'undefined' && (emoji = emojiList.find((emoji) -> emoji.name == emojiName))
-      action(emoji)
+      original_name = emoji.alias_for
+      if original_name && (original_emoji = emojiList.find((emoji) -> emoji.name == original_name))
+        action(emoji, original_emoji)
+      else
+        action(emoji)
     else
       context.send("I don't recognize :#{emojiName}:, if it exists, my cache might need a refresh. Call `emojme how do` to find out how")
 
