@@ -39,7 +39,7 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
     token = context.match[2]
     if context.message.room[0] != 'D' # delete that message, keep tokens out of public chat
       slack.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
-      context.send("Don't go posting auth tokens in public channels ya dummy")
+      context.send("Don't go posting auth tokens in public channels ya dummy. Delete that or I'm telling mom.")
       return
     else # log in with the provided token
       context.send("Updating emoji database, this may take a few moments...")
@@ -49,8 +49,6 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
           robot.brain.set 'emojme.LastUpdatedAt', Date(Date.now()).toString()
           robot.brain.set 'emojme.AdminList', adminList[Object.keys(adminList)[0]].emojiList
           context.send("emoji database refresh complete. Let me clean that up for you.")
-          console.log("deleting message #{context.message.id} from channel #{context.message.room}")
-          slack.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
         .catch (e) ->
           console.log(e)
           context.send("looks like something went wrong, is your token correct?")
@@ -78,16 +76,17 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
   robot.respond /emojme who made (.*)/, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
       find_emoji context, emojiList, context.match[1].replace(/:/g,''), (emoji, original) ->
-        context.send("That would be #{emoji.user_display_name}")
+        message = "That would be #{emoji.user_display_name}"
         if original
-          context.send("But #{original.user_display_name} made the original, #{original.name}")
+          message += ", but #{original.user_display_name} made the original, `:#{original.name}:`")
+        context.send(message)
 
   robot.respond /emojme how many emoji has (.*) made?/, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
       author = context.match[1]
       find_author context, emojiList, author, (authorsEmoji) ->
         total = authorsEmoji.length
-        originals = authorsEmoji.filter((emoji) -> emoji.is_alias == 0).length
+        originals = authorsEmoji.filter((emoji) -> emoji.is_alias == 1).length
         context.send("Looks like #{author} has #{total} emoji, #{originals} originals and #{total - originals} aliases")
 
   robot.respond /emojme show me the emoji (.*) made/, (context) ->
