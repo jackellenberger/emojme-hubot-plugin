@@ -79,7 +79,7 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
       find_emoji context, emojiList, context.match[1].replace(/:/g,''), (emoji, original) ->
         message = "That would be #{emoji.user_display_name}"
         if original
-          message += ", but #{original.user_display_name} made the original, `:#{original.name}:`")
+          message += ", but #{original.user_display_name} made the original, `:#{original.name}:`"
         context.send(message)
 
   robot.respond /emojme how many emoji has (.*) made?/, (context) ->
