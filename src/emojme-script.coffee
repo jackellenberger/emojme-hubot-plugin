@@ -48,7 +48,6 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
           robot.brain.set 'emojme.AuthUser', context.message.user.name
           robot.brain.set 'emojme.LastUpdatedAt', Date(Date.now()).toString()
           robot.brain.set 'emojme.AdminList', adminList[Object.keys(adminList)[0]].emojiList
-          robot.brain.save()
           context.send("emoji database refresh complete. Probably oughta clean that token up tho.")
         .catch (e) ->
           console.log(e)
