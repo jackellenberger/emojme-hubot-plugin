@@ -5,7 +5,7 @@
 #   hubot emojme how do - a little explainer on how to use emojme
 #   hubot emojme status - print the age of the cache and who last updated it
 #   hubot emojme refresh with my super secret user token that i will not post in any public channels: <token> - authenticate with user token if given
-#   hubot emojme me - give a random emoji
+#   hubot emojme emoji me - give a random emoji
 #   hubot emojme dump app emoji (with metadata)? - upload a list of emoji names, or emoji metadata if requested
 #   hubot emojme tell me about :<emoji>: - give the provided emoji's metadata
 #   hubot emojme who made :<emoji>: - give the provided emoji's author.
@@ -63,7 +63,7 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
           console.log(e)
           context.send("looks like something went wrong, is your token correct?")
 
-  robot.respond /emojme(?: emoji|hit)?(?: me)?/i, (context) ->
+  robot.respond /emojme (emoji me|(random( emoji)?))/i, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
       context.send(":#{emojiList[Math.floor(Math.random()*emojiList.length)].name}:")
 
