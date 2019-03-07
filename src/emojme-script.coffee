@@ -40,7 +40,7 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
       context.send("#{lastUser} last refreshed the emoji list back at #{lastRefresh} when there were #{emojiList.length} emoji")
 
   robot.respond /emojme refresh (.* )?with my super secret user token that i will not post in any public channels: ([0-9A-z-_]*)/i, (context) ->
-    slack_instance = context.match[1].trim() || context.message.user.slack.team_id
+    slack_instance = (context.match[1] || context.message.user.slack.team_id).trim()
     token = context.match[2].trim()
     if context.message.room[0] != 'D' # delete that message, keep tokens out of public chat
       slack.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
