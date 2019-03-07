@@ -19,6 +19,7 @@
 # Author:
 #   Jack Ellenberger <jellenberger@uchicago.edu>
 emojme = require 'emojme'
+slack = require 'slack'
 
 module.exports = (robot) ->
   robot.respond /emojme how do/i, (context) ->
@@ -42,7 +43,7 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
     slack_instance = context.match[1].trim() || context.message.user.slack.team_id
     token = context.match[2].trim()
     if context.message.room[0] != 'D' # delete that message, keep tokens out of public chat
-      robot.adapter.client.web.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
+      slack.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
       context.send("Don't go posting auth tokens in public channels ya dummy. Delete that or I'm telling mom.")
       return
     else # log in with the provided token
@@ -53,9 +54,7 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
           robot.brain.set 'emojme.LastUpdatedAt', Date(Date.now()).toString()
           robot.brain.set 'emojme.AdminList', adminList[Object.keys(adminList)[0]].emojiList
           context.send("emoji database refresh complete. Probably oughta clean that token up tho.")
-          robot.adapter.client.web.chat.delete({
-            token: token, channel: context.message.room, ts: context.message.id
-          })
+          slack.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
             .catch (e) ->
               console.log(e)
               console.log("Unable to delete #{context.message.id} in channel #{context.message.room}")
