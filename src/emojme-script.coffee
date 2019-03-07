@@ -139,7 +139,7 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
     find_archive_entry emoji_name, (existing_entry) ->
       if existing_entry
         context.send("Deleting previous interpretation of :#{emoji_name}:: #{existing_entry}")
-    delete_archive_entry emoji_name, message
+    delete_archive_entry emoji_name
 
   robot.respond /(?:emojme )?what does the (?:record|archive) (?:state|say) (?:about|for|of) :(.*?):\??/i, (context) ->
     emoji_name = context.match[1].replace(/:/g, '')
@@ -202,7 +202,7 @@ If they have a new display name, maybe refresh the cache? Call `emojme how do` t
     emoji_archive[emoji_name] = message
     robot.brain.set "emojme.emojiArchive", emoji_archive
 
-  delete_archive_entry = (emoji_name, message, action) ->
+  delete_archive_entry = (emoji_name) ->
     emoji_archive = robot.brain.get "emojme.emojiArchive"
     emoji_archive ?= {}
     delete emoji_archive[emoji_name]
