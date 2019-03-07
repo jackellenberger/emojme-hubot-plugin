@@ -122,7 +122,7 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
           catch
             context.send("Ahh I can't do it, something's wrong")
 
-  robot.respond /(?:emojme )?commit this to the record (?:of|for) :(.*?):\s?: (.*?)/i, (context) ->
+  robot.respond /(?:emojme )?commit this to the record (?:of|for) :(.*?):\s?: (.*)/i, (context) ->
     emoji_name = context.match[1].replace(/:/g, '')
     message = context.match[2].replace(/“|"|”/g, '')
     find_archive_entry emoji_name, (existing_entry) ->
@@ -154,7 +154,7 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
     emoji_archive ?= {}
     names = Object.keys(emoji_archive)
     emoji = if names.length == 0 then ":shrug:" else names.map((name) => ":#{name}: ")
-    context.send("Looks like we got explanations for #{names.length} emoji #{emoji}")
+    context.send("Looks like we got explanations for #{names.length} emoji, including #{emoji}")
     if names.length < 10
       context.send("Jimmy Wales says if we all wrote one emoji explanation we'd have a lot more explanations than this\nhttps://i.kym-cdn.com/entries/icons/original/000/004/510/Jimmeh.jpg")
 
