@@ -130,8 +130,8 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
 
   robot.respond /(?:emojme )?who (?:all )?has (made|contributed|created|submitted) (?:an )?emoji\??/i, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
-      authors = Array.from(new Set(emojiList.map((emoji) => emoji.user_display_name)))
-      context.send(authors.join(",\n"))
+      authors = Array.from(new Set(emojiList.map((emoji) => emoji.user_display_name))).sort()
+      context.send(authors.join(", "))
 
   robot.respond /(?:emojme )?commit this to the record (?:of|for) :(.*?):\s?: (.*)/i, (context) ->
     emoji_name = context.match[1].replace(/:/g, '')
@@ -212,7 +212,7 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
     action(emojiList.filter((emoji) -> emoji[field] == value))
 
   find_display_name_by_name = (name, action) ->
-    user = robot.brain.userForName(name)
+    user = robot.brain.userForName(name.replace(/@/g,''))
     if user
       action(user.real_name)
 
