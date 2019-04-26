@@ -187,16 +187,27 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
       context.send("I don't recognize :#{emojiName}:, if it exists, my cache might need a refresh. Call `emojme how do` to find out how")
 
   find_author = (context, emojiList, authorName, action) ->
-    if authorsEmoji = emojiList.filter((emoji) -> emoji.user_display_name == authorName)
-      if authorsEmoji.length > 0
+    find_emoji_by 'user_display_name', authorName, emojiList, (authorsEmoji) ->
+      if authorsEmoji && authorsEmoji.length > 0
         action(authorsEmoji)
       else
-        context.send("Okay I know #{authorName}, we all know em, they're good people, but they don't have any emoji. No excuse for that.")
-    else
-      context.send("""
-I don't know \"#{authorName}\", is that still their name on Slack?
-If they have a new display name, maybe refresh the cache? Call `emojme how do` to find out how.
-""")
+        find_display_name_by_name authorName, (realAuthorName) ->
+          if realAuthorName
+            find_emoji_by 'user_dislay_name', realAuthorName, emojiList, (authorsEmoji) ->
+              if authorsEmoji && authorsEmoji.length > 0
+                action(authorsEmoji)
+              else
+                context.send("Hmm, '#{authorName}', huh? Never heard of em. Either they don't exist, they have no emoji, or you're not using their Slack display name.")
+          else
+            context.send("Hmm, '#{authorName}', huh? Never heard of em. Either they don't exist, they have no emoji, or you're not using their Slack display name.")
+
+  find_emoji_by = (field, value, emojiList, action) ->
+    action(emojiList.filter((emoji) -> emoji[field] == value))
+
+  find_display_name_by_name = (name, action) ->
+    user = robot.brain.userForName(name)
+    if user
+      action(user.real_name)
 
   find_archive_entry = (emoji_name, action) ->
     emoji_archive = robot.brain.get "emojme.emojiArchive"
@@ -214,7 +225,6 @@ If they have a new display name, maybe refresh the cache? Call `emojme how do` t
     emoji_archive ?= {}
     delete emoji_archive[emoji_name]
     robot.brain.set "emojme.emojiArchive", emoji_archive
-
 
   # hubot emojme :gavel: <emoji> <link to message> - save the provided message to emoji's record
   # # Requires find_message, which isn't workable with a bot token
