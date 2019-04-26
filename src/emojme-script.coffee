@@ -6,11 +6,13 @@
 #   hubot emojme status - print the age of the cache and who last updated it
 #   hubot emojme refresh with my super secret user token that i will not post in any public channels: <token> - authenticate with user token if given
 #   hubot emojme emoji me - give a random emoji
+#   hubot emojme random emoji by <user>- give a random emoji made by <user>
 #   hubot emojme dump app emoji (with metadata)? - upload a list of emoji names, or emoji metadata if requested
 #   hubot emojme tell me about :<emoji>: - give the provided emoji's metadata
 #   hubot emojme who made :<emoji>: - give the provided emoji's author.
 #   hubot emojme how many emoji has <author> made? - give the provided author's emoji statistics.
 #   hubot emojme show me the emoji <author> made - give the provided author's emoji
+#   hubot emojme who all has made an emoji? - list all emoji authors
 #   hubot emojme commit this to the record of :<emoji>:: <message> - save an explanation for the given emoji
 #   hubot emojme purge the record of :<emoji>: - delete all explanation for the given emoji
 #   hubot emojme what does the record state about :<emoji>:? - read the emoji's explanation if it exists
@@ -64,8 +66,8 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
 
   robot.respond /emojme (?:emoji me|(?:hit me with a )?(?:random(?: emoji)?)(?: by (.*))?)/i, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
-      if (author = context.match[1].trim())
-        find_author context, emojiList, author, (authorsEmoji) ->
+      if (author = context.match[1])
+        find_author context, emojiList, author.trim(), (authorsEmoji) ->
           context.send(":#{authorsEmoji[Math.floor(Math.random()*authorsEmoji.length)].name}:")
       else
         context.send(":#{emojiList[Math.floor(Math.random()*emojiList.length)].name}:")
@@ -125,6 +127,11 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
         total = authorsEmoji.length
         originals = authorsEmoji.filter((emoji) -> emoji.is_alias == 0).length
         context.send("Looks like #{author} has #{total} emoji, #{originals} originals and #{total - originals} aliases")
+
+  robot.respond /(?:emojme )?who (?:all )?has (made|contributed|created|submitted) (?:an )?emoji\??/i, (context) ->
+    require_cache context, (emojiList, lastUser, lastRefresh) ->
+      authors = Array.from(new Set(emojiList.map((emoji) => emoji.user_display_name)))
+      context.send(authors.join(",\n"))
 
   robot.respond /(?:emojme )?commit this to the record (?:of|for) :(.*?):\s?: (.*)/i, (context) ->
     emoji_name = context.match[1].replace(/:/g, '')
@@ -193,11 +200,11 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
       else
         find_display_name_by_name authorName, (realAuthorName) ->
           if realAuthorName
-            find_emoji_by 'user_dislay_name', realAuthorName, emojiList, (authorsEmoji) ->
+            find_emoji_by 'user_display_name', realAuthorName, emojiList, (authorsEmoji) ->
               if authorsEmoji && authorsEmoji.length > 0
                 action(authorsEmoji)
               else
-                context.send("Hmm, '#{authorName}', huh? Never heard of em. Either they don't exist, they have no emoji, or you're not using their Slack display name.")
+                context.send("Hmm, '#{authorName}', a.k.a '#{realAuthorName}', huh? Never heard of em. Either they don't exist or they have no emoji.")
           else
             context.send("Hmm, '#{authorName}', huh? Never heard of em. Either they don't exist, they have no emoji, or you're not using their Slack display name.")
 
