@@ -69,15 +69,15 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
   robot.respond /(?:emojme )?(?:list|dump) all (?:the )?emoji((?: with)? metadata)?/i, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
       # Give metadata if asked for, otherwise just emoji names
-      content = JSON.stringify(context.match[1] ? emojiList : emojiList.map((emoji) -> emoji.name), null, 2)
+      content = if context.match[1] then emojiList else emojiList.map((emoji) -> emoji.name)
       try
         robot.adapter.client.web.files.upload('adminList.txt', {
-          content,
+          content: JSON.stringify(content, null, 2),
           channels: context.message.room,
           initial_comment: "Here are the emoji as of #{lastRefresh}"
         })
       catch
-        context.send("I have like #{adminList.length} emoji but I'm having a hard time uploading them.")
+        context.send("I have like #{emojiList.length} emoji but I'm having a hard time uploading them.")
 
   robot.respond /(?:emojme )?tell me about :(.*?):/i, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
@@ -160,6 +160,9 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
 
   # Helpers
   require_cache = (context, action) ->
+    if (process.env.SIMULATE_EMOJME_CACHE) then return action([{
+      name: "emoji.name", is_alias: 0, alias_for: null, user_display_name: "emoji.user_display_name"
+    }], "emojme.AuthUser", "emojme.lastUpdatedAt")
     if (
       (emojiList = robot.brain.get 'emojme.AdminList' ) &&
       (lastUser = robot.brain.get 'emojme.AuthUser' ) &&
