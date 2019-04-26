@@ -62,9 +62,13 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
           console.log(e)
           context.send("looks like something went wrong, is your token correct?")
 
-  robot.respond /emojme (emoji me|(random( emoji)?))/i, (context) ->
+  robot.respond /emojme (?:emoji me|(?:hit me with a )?(?:random(?: emoji)?)(?: by (.*))?)/i, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
-      context.send(":#{emojiList[Math.floor(Math.random()*emojiList.length)].name}:")
+      if (author = context.match[1].trim())
+        find_author context, emojiList, author, (authorsEmoji) ->
+          context.send(":#{authorsEmoji[Math.floor(Math.random()*authorsEmoji.length)].name}:")
+      else
+        context.send(":#{emojiList[Math.floor(Math.random()*emojiList.length)].name}:")
 
   robot.respond /(?:emojme )?(?:list|dump) all (?:the )?emoji((?: with)? metadata)?/i, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
@@ -78,6 +82,26 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
         })
       catch
         context.send("I have like #{emojiList.length} emoji but I'm having a hard time uploading them.")
+
+  robot.respond /(?:emojme )?show me (?:all )?the emoji (?:that )?(.*?) (?:has )?made/i, (context) ->
+    require_cache context, (emojiList, lastUser, lastRefresh) ->
+      author = context.match[1]
+      find_author context, emojiList, author, (authorsEmoji) ->
+        if authorsEmoji.length < 25
+          context.send(authorsEmoji.map((emoji) -> ":#{emoji.name}:").join(" "))
+        else
+          try
+            context.send("#{author} has like #{authorsEmoji.length} emoji, I'm gonna thread this")
+            index = 0
+            while index < authorsEmoji.length
+              robot.adapter.client.web.chat.postMessage(
+                context.message.user.room,
+                authorsEmoji.slice(index, index+100).map((emoji) -> ":#{emoji.name}:").join(" "),
+                {thread_ts: context.message.id}
+              )
+              index += 100
+          catch
+            context.send("Ahh I can't do it, something's wrong")
 
   robot.respond /(?:emojme )?tell me about :(.*?):/i, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
@@ -101,26 +125,6 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
         total = authorsEmoji.length
         originals = authorsEmoji.filter((emoji) -> emoji.is_alias == 0).length
         context.send("Looks like #{author} has #{total} emoji, #{originals} originals and #{total - originals} aliases")
-
-  robot.respond /(?:emojme )?show me (?:all )?the emoji (?:that )?(.*?) (?:has )?made/i, (context) ->
-    require_cache context, (emojiList, lastUser, lastRefresh) ->
-      author = context.match[1]
-      find_author context, emojiList, author, (authorsEmoji) ->
-        if authorsEmoji.length < 25
-          context.send(authorsEmoji.map((emoji) -> ":#{emoji.name}:").join(" "))
-        else
-          try
-            context.send("#{author} has like #{authorsEmoji.length} emoji, I'm gonna thread this")
-            index = 0
-            while index < authorsEmoji.length
-              robot.adapter.client.web.chat.postMessage(
-                context.message.user.room,
-                authorsEmoji.slice(index, index+100).map((emoji) -> ":#{emoji.name}:").join(" "),
-                {thread_ts: context.message.id}
-              )
-              index += 100
-          catch
-            context.send("Ahh I can't do it, something's wrong")
 
   robot.respond /(?:emojme )?commit this to the record (?:of|for) :(.*?):\s?: (.*)/i, (context) ->
     emoji_name = context.match[1].replace(/:/g, '')
