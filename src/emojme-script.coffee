@@ -5,10 +5,12 @@
 #   hubot emojme how do - a little explainer on how to use emojme
 #   hubot emojme status - print the age of the cache and who last updated it
 #   hubot emojme refresh with my super secret user token that i will not post in any public channels: <token> - authenticate with user token if given
-#   hubot emojme emoji me - give a random emoji
-#   hubot emojme random emoji by <user>- give a random emoji made by <user>
+#   hubot emojme random - give a random emoji
+#   hubot emojme N random - give N random emoji
+#   hubot emojme random emoji by <user> - give a random emoji made by <user>
 #   hubot emojme dump all emoji (with metadata)? - upload a list of emoji names, or emoji metadata if requested
 #   hubot emojme tell me about :<emoji>: - give the provided emoji's metadata
+#   hubot emojme enhance :<emoji>: - give the provided emoji's source image at highest availalbe resolution
 #   hubot emojme who made :<emoji>: - give the provided emoji's author.
 #   hubot emojme when was :<emoji>: made - give the provided emoji's creation date, if available.
 #   hubot emojme how many emoji has <author> made? - give the provided author's emoji statistics.
@@ -65,13 +67,16 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
           console.log(e)
           context.send("looks like something went wrong, is your token correct?")
 
-  robot.respond /emojme (?:emoji me|(?:hit me with a )?(?:random(?: emoji)?)(?: by (.*))?)/i, (context) ->
+  robot.respond /emojme (?:(\d*) )?random(?: emoji)?(?: by (.*))?/i, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
-      if (author = context.match[1])
+      count = context.match[1] || 1
+      emojis = []
+      if (author = context.match[2])
         find_author context, emojiList, author.trim(), (authorsEmoji) ->
-          context.send(":#{authorsEmoji[Math.floor(Math.random()*authorsEmoji.length)].name}:")
+          emojis.push(":#{authorsEmoji[Math.floor(Math.random()*authorsEmoji.length)].name}:") for [1..count] if count
       else
-        context.send(":#{emojiList[Math.floor(Math.random()*emojiList.length)].name}:")
+        emojis.push(":#{emojiList[Math.floor(Math.random()*emojiList.length)].name}:") for [1..count] if count
+      context.send(emojis.join(" "))
 
   robot.respond /(?:emojme )?(?:list|dump) all (?:the )?emoji((?: with)? metadata)?/i, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
@@ -112,6 +117,11 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
         find_archive_entry emoji.name, (archive_entry) ->
           emoji.archive_entry = archive_entry
         context.send("Ah, :#{emoji.name}:, I know it well...\n```#{JSON.stringify(emoji, null, 2)}```")
+
+  robot.respond /(?:emojme )?(?:enhance|show me|source)\!? :(.*?):/i, (context) ->
+    require_cache context, (emojiList, lastUser, lastRefresh) ->
+      find_emoji context, emojiList, context.match[1].replace(/:/g,''), (emoji, _) ->
+        context.send("#{emoji.url}")
 
   robot.respond /(?:emojme )?who made (?:the )?:(.*?):(?: emoji)?\??/i, (context) ->
     require_cache context, (emojiList, lastUser, lastRefresh) ->
@@ -183,9 +193,10 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
 
   # Helpers
   require_cache = (context, action) ->
-    if (process.env.SIMULATE_EMOJME_CACHE) then return action([{
-      name: "emoji.name", is_alias: 0, alias_for: null, user_display_name: "emoji.user_display_name"
-    }], "emojme.AuthUser", "emojme.lastUpdatedAt")
+    if (process.env.SIMULATE_EMOJME_CACHE) then return action([
+      { name: "emoji.name", is_alias: 0, alias_for: null, user_display_name: "emoji.user_display_name" },
+      { name: "emoji.name.2", is_alias: 0, alias_for: null, user_display_name: "emoji.user_display_name.2" }
+    ], "emojme.AuthUser", "emojme.lastUpdatedAt")
     if (
       (emojiList = robot.brain.get 'emojme.AdminList' ) &&
       (lastUser = robot.brain.get 'emojme.AuthUser' ) &&
