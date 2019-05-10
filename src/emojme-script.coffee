@@ -10,6 +10,7 @@
 #   hubot emojme dump app emoji (with metadata)? - upload a list of emoji names, or emoji metadata if requested
 #   hubot emojme tell me about :<emoji>: - give the provided emoji's metadata
 #   hubot emojme who made :<emoji>: - give the provided emoji's author.
+#   hubot emojme when was :<emoji>: made - give the provided emoji's creation date, if available.
 #   hubot emojme how many emoji has <author> made? - give the provided author's emoji statistics.
 #   hubot emojme show me the emoji <author> made - give the provided author's emoji
 #   hubot emojme who all has made an emoji? - list all emoji authors
@@ -118,6 +119,17 @@ If there is no emoji cache or it's out of date, create a DM with hubot and write
         message = "That would be #{emoji.user_display_name}"
         if original
           message += ", but #{original.user_display_name} made the original, `:#{original.name}:`"
+        context.send(message)
+
+  robot.respond /(?:emojme )?when was :(.*?): (?:made|created)\??/i, (context) ->
+    require_cache context, (emojiList, lastUser, lastRefresh) ->
+      find_emoji context, emojiList, context.match[1].replace(/:/g,''), (emoji, original) ->
+        message = "I don't know, ask #{emoji.user_display_name}!"
+        if timestamp = (emoji.created * 1000)
+          message = ":#{emoji.name}: was made by #{emoji.user_display_name} back on #{new Date(timestamp).toString()}"
+          if original && original_timestamp = (original.timestamp * 1000)
+
+            message += ", but #{original.user_display_name} made the original `#{original.name}` on #{new Date(original_timestamp).toString()}"
         context.send(message)
 
   robot.respond /(?:emojme )?how many emoji has (.*?) made\??/i, (context) ->
