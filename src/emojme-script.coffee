@@ -7,7 +7,7 @@
 #   hubot emojme refresh with my super secret user token that i will not post in any public channels: <token> - authenticate with user token if given
 #   hubot emojme emoji me - give a random emoji
 #   hubot emojme random emoji by <user>- give a random emoji made by <user>
-#   hubot emojme dump app emoji (with metadata)? - upload a list of emoji names, or emoji metadata if requested
+#   hubot emojme dump all emoji (with metadata)? - upload a list of emoji names, or emoji metadata if requested
 #   hubot emojme tell me about :<emoji>: - give the provided emoji's metadata
 #   hubot emojme who made :<emoji>: - give the provided emoji's author.
 #   hubot emojme when was :<emoji>: made - give the provided emoji's creation date, if available.
