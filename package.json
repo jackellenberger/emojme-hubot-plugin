@@ -1,6 +1,6 @@
 {
   "name": "emojme-hubot-plugin",
-  "version": "0.5.9",
+  "version": "0.5.10",
   "description": "a hubot script to run emojme tasks from slack",
   "main": "index.coffee",
   "scripts": {},
