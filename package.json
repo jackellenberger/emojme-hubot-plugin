@@ -25,6 +25,7 @@
   "homepage": "https://github.com/jackellenberger/emojme-hubot-plugin#readme",
   "dependencies": {
     "emojme": "^1.6.1",
+    "hubot-conversation": "^1.1.1",
     "slack": "^11.0.2"
   },
   "peerDependencies": {
