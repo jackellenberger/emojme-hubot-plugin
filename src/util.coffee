@@ -25,7 +25,7 @@ module.exports = (robot) ->
         original_request.send("#{request.message.user.name} updated the emoji cache, make sure to thank them!")
         action(emojiList, lastUser, lastUpdate)
       .catch (e) ->
-        console.log("[ERROR] #{e}")
+        console.log("[ERROR] #{e} #{e.stack}")
         request.send("Looks like something went wrong, is your token correct?")
 
   do_login: (request, original_request, action) ->
@@ -65,19 +65,39 @@ module.exports = (robot) ->
       request.send("I don't recognize :#{emojiName}:, if it exists, my cache might need a refresh. Call `emojme refresh` to find out how")
 
   find_author: (request, emojiList, authorName, action) ->
-    this.find_emoji_by 'user_display_name', authorName, emojiList, (authorsEmoji) ->
-      if authorsEmoji && authorsEmoji.length > 0
-        action(authorsEmoji)
+    self = this
+    self.find_emoji_by 'user_display_name', authorName, emojiList, (foundEmojiList) ->
+      if foundEmojiList && foundEmojiList.length > 0
+        action(foundEmojiList)
       else
-        this.find_display_name_by_name authorName, (realAuthorName) ->
+        self.find_display_name_by_name authorName, (realAuthorName) ->
           if realAuthorName
-            this.find_emoji_by 'user_display_name', realAuthorName, emojiList, (authorsEmoji) ->
-              if authorsEmoji && authorsEmoji.length > 0
-                action(authorsEmoji)
+            self.find_emoji_by 'user_display_name', realAuthorName, emojiList, (foundEmojiList) ->
+              if foundEmojiList && foundEmojiList.length > 0
+                action(foundEmojiList)
               else
-                request.send("Hmm, '#{authorName}', a.k.a '#{realAuthorName}', huh? Never heard of em. Either they don't exist or they have no emoji.")
+                request.send("Hmm, '#{authorName}', a.k.a '#{realAuthorName}', huh? Never heard of em. Maybe they haven't been contributing emoji?")
           else
             request.send("Hmm, '#{authorName}', huh? Never heard of em. Either they don't exist, they have no emoji, or you're not using their Slack display name.")
+
+  send_emoji_list: (request, emojiList) ->
+    if !emojiList or emojiList.length == 0
+      request.send "No emoji here, sorry!"
+    else if emojiList.length < 25
+      request.send(emojiList.map((emoji) -> ":#{emoji.name}:").join(" "))
+    else
+      try
+        request.send("threading :this:")
+        index = 0
+        while index < emojiList.length
+          robot.adapter.client.web.chat.postMessage(
+            request.message.user.room,
+            emojiList.slice(index, index+100).map((emoji) -> ":#{emoji.name}:").join(" "),
+            {thread_ts: request.message.id}
+          )
+          index += 100
+      catch
+        request.send("Ahh I can't do it, something's wrong")
 
   find_emoji_by: (field, value, emojiList, action) ->
     action(emojiList.filter((emoji) -> emoji[field] == value))
@@ -103,4 +123,3 @@ module.exports = (robot) ->
     emoji_archive ?= {}
     delete emoji_archive[emoji_name]
     robot.brain.set "emojme.emojiArchive", emoji_archive
-

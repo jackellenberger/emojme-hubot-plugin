@@ -4,7 +4,7 @@
 # Commands:
 #   hubot emojme help - print help message
 #   hubot emojme status - print the age of the cache and who last updated it
-#   hubot emojme refresh <subdomain>:<token> - authenticate and grab list of emoji, enabling all other commands. If subdomain and token are not provided up front they will be asked for.
+#   hubot emojme refresh (with <subdomain>:<token>) - authenticate and grab list of emoji, enabling all other commands. If subdomain and token are not provided up front they will be asked for.
 #   hubot emojme random - give a random emoji
 #   hubot emojme N random - give N random emoji
 #   hubot emojme random emoji by <user> - give a random emoji made by <user>
@@ -15,6 +15,7 @@
 #   hubot emojme when was :<emoji>: made - give the provided emoji's creation date, if available.
 #   hubot emojme how many emoji has <author> made? - give the provided author's emoji statistics.
 #   hubot emojme show me the emoji <author> made - give the provided author's emoji
+#   hubot emojme show me all the new emoji since <some NLP interpretable day> - show all the emoji created since 'yesterday', 'three days ago', 'last week', etc.
 #   hubot emojme who all has made an emoji? - list all emoji authors
 #   hubot emojme commit this to the record of :<emoji>:: <message> - save an explanation for the given emoji
 #   hubot emojme purge the record of :<emoji>: - delete all explanation for the given emoji
@@ -25,6 +26,7 @@
 #   Jack Ellenberger <jellenberger@uchicago.edu>
 slack = require 'slack'
 Conversation = require 'hubot-conversation'
+chrono = require('chrono-node')
 
 Util = require './util'
 
@@ -33,7 +35,7 @@ module.exports = (robot) ->
   robot.emojmeConversation = new Conversation robot
 
   robot.respond /emojme help/i, (request) ->
-    context.send("""
+    request.send("""
 Hey there! emojme is an project made to interface with the dark parts of slack's api: the emoji endpoints.
 
 In order to do anything with it here, you'll need to make sure that hubot knows about your list of emoji, which you can check on with `emojme status`.
@@ -48,18 +50,18 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       request.send("#{lastUser} last refreshed the emoji list back at #{lastRefresh} when there were #{emojiList.length} emoji")
 
-  robot.respond /emojme refresh/i, (request) ->
+  robot.respond /emojme refresh$/i, (request) ->
     util.do_login request, request, (subdomain, token) ->
       util.emojme_download request, request, subdomain, token, (emojiList, lastUser, lastUpdate) ->
         request.send("emoji database refresh complete, found #{emojiList.length} of em. :nice:")
 
-  robot.respond /emojme refresh (.*:)?(xoxs-.*)/i, (request) ->
+  robot.respond /emojme refresh with (.*:)?(xoxs-.*)/i, (request) ->
     subdomain = (request.match[1] || request.message.user.slack.team_id).replace(/:/g,'').trim()
     token = (request.match[2] || null).trim()
     util.emojme_download request, request, subdomain, token, (emojiList, lastUser, lastUpdate) ->
       request.send("emoji database refresh complete, found #{emojiList.length} of em. :nice:")
 
-  robot.respond /emojme (?:(\d*) )?random(?: emoji)?(?: by (.*))?/i, (request) ->
+  robot.respond /(?:emojme )?(?:(\d*) )?random(?: emoji)?(?: by (.*))?/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       count = request.match[1] || 1
       emojis = []
@@ -70,7 +72,7 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
         emojis.push(":#{emojiList[Math.floor(Math.random()*emojiList.length)].name}:") for [1..count] if count
       request.send(emojis.join(" "))
 
-  robot.respond /(?:emojme )?(?:list|dump) all (?:the )?emoji((?: with)? metadata)?/i, (request) ->
+  robot.respond /emojme (?:list|dump) all (?:the )?emoji((?: with)? metadata)?/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       # Give metadata if asked for, otherwise just emoji names
       content = if request.match[1] then emojiList else emojiList.map((emoji) -> emoji.name)
@@ -83,39 +85,36 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
       catch
         request.send("I have like #{emojiList.length} emoji but I'm having a hard time uploading them.")
 
-  robot.respond /(?:emojme )?show me (?:all )?the emoji (?:that )?(.*?) (?:has )?made/i, (request) ->
+  robot.respond /emojme show me(?: |all|the|new)+? emoji(?: by (.*))?(?: since (.*))/i, (request) ->
+    util.require_cache request, (emojiList, lastUser, lastRefresh) ->
+      since = chrono.parseDate(request.match[2]).getTime() / 1000
+      if author = request.match[1]
+        util.find_author request, emojiList, author.trim(), (authorsEmoji) ->
+          emojiList = authorsEmoji
+      if since
+        emojiList = emojiList.filter((emoji) -> emoji.created > since)
+
+      util.send_emoji_list request, emojiList
+
+  robot.respond /emojme show me (?:all )?the emoji (?:that )?(.*?) (?:has )?made/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       author = request.match[1]
       util.find_author request, emojiList, author, (authorsEmoji) ->
-        if authorsEmoji.length < 25
-          request.send(authorsEmoji.map((emoji) -> ":#{emoji.name}:").join(" "))
-        else
-          try
-            request.send("#{author} has like #{authorsEmoji.length} emoji, I'm gonna thread this")
-            index = 0
-            while index < authorsEmoji.length
-              robot.adapter.client.web.chat.postMessage(
-                request.message.user.room,
-                authorsEmoji.slice(index, index+100).map((emoji) -> ":#{emoji.name}:").join(" "),
-                {thread_ts: request.message.id}
-              )
-              index += 100
-          catch
-            request.send("Ahh I can't do it, something's wrong")
+        util.send_emoji_list request, authorsEmoji
 
-  robot.respond /(?:emojme )?tell me about :(.*?):/i, (request) ->
+  robot.respond /emojme tell me about :(.*?):/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       util.find_emoji request, emojiList, request.match[1].replace(/:/g,''), (emoji, _) ->
         util.find_archive_entry emoji.name, (archive_entry) ->
           emoji.archive_entry = archive_entry
         request.send("Ah, :#{emoji.name}:, I know it well...\n```#{JSON.stringify(emoji, null, 2)}```")
 
-  robot.respond /(?:emojme )?(?:enhance|show me|source)\!? :(.*?):/i, (request) ->
+  robot.respond /emojme (?:enhance|show me|source)\!? :(.*?):/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       util.find_emoji request, emojiList, request.match[1].replace(/:/g,''), (emoji, _) ->
         request.send("#{emoji.url}")
 
-  robot.respond /(?:emojme )?who made (?:the )?:(.*?):(?: emoji)?\??/i, (request) ->
+  robot.respond /emojme who made (?:the )?:(.*?):(?: emoji)?\??/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       util.find_emoji request, emojiList, request.match[1].replace(/:/g,''), (emoji, original) ->
         message = "That would be #{emoji.user_display_name}"
@@ -123,7 +122,7 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
           message += ", but #{original.user_display_name} made the original, `:#{original.name}:`"
         request.send(message)
 
-  robot.respond /(?:emojme )?when was :(.*?): (?:made|created)\??/i, (request) ->
+  robot.respond /emojme when was :(.*?): (?:made|created)\??/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       util.find_emoji request, emojiList, request.match[1].replace(/:/g,''), (emoji, original) ->
         message = "I don't know, ask #{emoji.user_display_name}!"
@@ -134,7 +133,7 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
             message += ", but #{original.user_display_name} made the original `#{original.name}` on #{new Date(original_timestamp).toString()}"
         request.send(message)
 
-  robot.respond /(?:emojme )?how many emoji has (.*?) made\??/i, (request) ->
+  robot.respond /emojme how many emoji has (.*?) made\??/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       author = request.match[1].trim()
       util.find_author request, emojiList, author, (authorsEmoji) ->
@@ -142,12 +141,12 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
         originals = authorsEmoji.filter((emoji) -> emoji.is_alias == 0).length
         request.send("Looks like #{author} has #{total} emoji, #{originals} originals and #{total - originals} aliases")
 
-  robot.respond /(?:emojme )?who (?:all )?has (made|contributed|created|submitted) (?:an )?emoji\??/i, (request) ->
+  robot.respond /emojme who (?:all )?has (made|contributed|created|submitted) (?:an )?emoji\??/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       authors = Array.from(new Set(emojiList.map((emoji) => emoji.user_display_name))).sort()
       request.send(authors.join(", "))
 
-  robot.respond /(?:emojme )?commit this to the record (?:of|for) :(.*?):\s?: (.*)/i, (request) ->
+  robot.respond /emojme commit this to the record (?:of|for) :(.*?):\s?: (.*)/i, (request) ->
     emoji_name = request.match[1].replace(/:/g, '')
     message = request.match[2].replace(/“|"|”/g, '')
     util.find_archive_entry emoji_name, (existing_entry) ->
@@ -159,14 +158,14 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
       timestamp: request.message.id
     })
 
-  robot.respond /(?:emojme )?(?:delete|purge|clear|clean) the record (?:of|for) :(.*?):/i, (request) ->
+  robot.respond /emojme (?:delete|purge|clear|clean) the record (?:of|for) :(.*?):/i, (request) ->
     emoji_name = request.match[1].replace(/:/g, '')
     util.find_archive_entry emoji_name, (existing_entry) ->
       if existing_entry
         request.send("Deleting previous interpretation of :#{emoji_name}:: #{existing_entry}")
     delete_archive_entry emoji_name
 
-  robot.respond /(?:emojme )?what does the (?:record|archive) (?:state|say) (?:about|for|of) :(.*?):\??/i, (request) ->
+  robot.respond /emojme what does the (?:record|archive) (?:state|say) (?:about|for|of) :(.*?):\??/i, (request) ->
     emoji_name = request.match[1].replace(/:/g, '')
     util.find_archive_entry emoji_name, (existing_entry) ->
       if existing_entry
