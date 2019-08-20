@@ -4,7 +4,7 @@
 # Commands:
 #   hubot emojme help - print help message
 #   hubot emojme status - print the age of the cache and who last updated it
-#   hubot emojme refresh (with <subdomain>:<token>) - authenticate and grab list of emoji, enabling all other commands. If subdomain and token are not provided up front they will be asked for.
+#   hubot emojme refresh (with <subdomain>:<token>) - authenticate and grab list of emoji, enabling all other commands. If subdomain and token are not provided up front they will be asked for. Do not post tokens in public channels.
 #   hubot emojme random - give a random emoji
 #   hubot emojme N random - give N random emoji
 #   hubot emojme random emoji by <user> - give a random emoji made by <user>
@@ -21,6 +21,7 @@
 #   hubot emojme purge the record of :<emoji>: - delete all explanation for the given emoji
 #   hubot emojme what does the record state about :<emoji>:? - read the emoji's explanation if it exists
 #   hubot emojme what emoji are documented? - give the names of all documented emoji
+#   hubot emojme show me my <10> most used emoji - give the usage counts of the emoji you use to +react most often
 #
 # Author:
 #   Jack Ellenberger <jellenberger@uchicago.edu>
@@ -46,20 +47,37 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
 """)
 
 
+  robot.respond /emojme.*xoxs-\d{12}-\d{12}-\d{12}-\w{64}/, (request) ->
+    util.ensure_no_public_tokens request
+
   robot.respond /emojme status/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       request.send("#{lastUser} last refreshed the emoji list back at #{lastRefresh} when there were #{emojiList.length} emoji")
 
   robot.respond /emojme refresh$/i, (request) ->
-    util.do_login request, request, (subdomain, token) ->
-      util.emojme_download request, request, subdomain, token, (emojiList, lastUser, lastUpdate) ->
+    util.do_login request, (subdomain, token) ->
+      util.react request, "stand-by"
+      util.emojme_download request, subdomain, token, (emojiList, lastUser, lastUpdate) ->
+        util.react request, "done"
         request.send("emoji database refresh complete, found #{emojiList.length} of em. :nice:")
 
   robot.respond /emojme refresh with (.*:)?(xoxs-.*)/i, (request) ->
     subdomain = (request.match[1] || request.message.user.slack.team_id).replace(/:/g,'').trim()
     token = (request.match[2] || null).trim()
-    util.emojme_download request, request, subdomain, token, (emojiList, lastUser, lastUpdate) ->
+    util.emojme_download request, subdomain, token, (emojiList, lastUser, lastUpdate) ->
       request.send("emoji database refresh complete, found #{emojiList.length} of em. :nice:")
+
+  robot.respond /emojme (?:what are |show me )?my (\d* )?(?:favorites?|most used)(?: emoji)?\??/i, (request) ->
+    count = parseInt (request.match[1] || "10").trim(), 10
+    util.do_login request, (subdomain, token) ->
+      util.react request, "stand-by"
+      util.emojme_favorites request, subdomain, token, (favorites) ->
+        util.react request, "done"
+        favoritesString = favorites.slice(0, count).map (emojiData) ->
+          emojiName = Object.keys(emojiData)[0]
+          emojiUsage = emojiData[emojiName].usage
+          "\n:#{emojiName}:: #{emojiUsage}"
+        request.send("You have reacted with: #{favoritesString}")
 
   robot.respond /(?:emojme )?(?:(\d*) )?random(?: emoji)?(?: by (.*))?/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
@@ -153,10 +171,7 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
       if existing_entry
         request.send("Overwriting previous interpretation of :#{emoji_name}:: #{existing_entry}")
     util.save_archive_entry emoji_name, message
-    robot.adapter.client.web.reactions.add("gavel", {
-      channel: request.message.user.room,
-      timestamp: request.message.id
-    })
+    util.react request, "gavel"
 
   robot.respond /emojme (?:delete|purge|clear|clean) the record (?:of|for) :(.*?):/i, (request) ->
     emoji_name = request.match[1].replace(/:/g, '')

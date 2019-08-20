@@ -5,8 +5,12 @@ emojme = require 'emojme'
 fs = require 'graceful-fs'
 
 module.exports = (robot) ->
-  emojme_download: (request, original_request, subdomain, token, action) ->
-    request.send("Updating emoji database, this may take a few moments...")
+  ensure_no_public_tokens: (request) ->
+    if request.message.room[0] == 'C'
+      slack.chat.delete({token: token, channel: request.message.room, ts: request.message.id})
+      request.send("Don't go posting slack auth tokens in public channels ya dummy. Delete that or I'm telling mom.")
+
+  emojme_download: (request, subdomain, token, action) ->
     downloadPromise = if process.env.LOCAL_EMOJI
       new Promise (resolve) ->
         resolve {subdomain: {emojiList: JSON.parse(fs.readFileSync(process.env.LOCAL_EMOJI, 'utf-8'))}}
@@ -14,24 +18,34 @@ module.exports = (robot) ->
       emojme.download(subdomain, token, {})
 
     downloadPromise
-      .then (adminList) =>
+      .then (downloadResult) =>
         lastUser = request.message.user.name
         lastUpdate = Date(Date.now()).toString()
-        emojiList = adminList[Object.keys(adminList)[0]].emojiList
+        emojiList = downloadResult[Object.keys(downloadResult)[0]].emojiList
         robot.brain.set 'emojme.AuthUser', lastUser
         robot.brain.set 'emojme.LastUpdatedAt', lastUpdate
         robot.brain.set 'emojme.AdminList', emojiList
 
-        original_request.send("#{request.message.user.name} updated the emoji cache, make sure to thank them!")
+        request.send("#{request.message.user.name} updated the emoji cache, make sure to thank them!")
         action(emojiList, lastUser, lastUpdate)
       .catch (e) ->
         console.log("[ERROR] #{e} #{e.stack}")
         request.send("Looks like something went wrong, is your token correct?")
 
-  do_login: (request, original_request, action) ->
+  emojme_favorites: (request, subdomain, token, action) ->
+    favoritesPromise = emojme.favorites subdomain, token, {}
+    favoritesPromise
+      .then (favoritesResult) =>
+        # TODO: save results to redis for global stats
+        action favoritesResult[Object.keys(favoritesResult)[0]].favoritesResult.favoriteEmojiAdminList
+      .catch (e) ->
+        console.log("[ERROR] #{e} #{e.stack}")
+        request.send("Looks like something went wrong, is your token correct?")
+
+  do_login: (request, action) ->
     dialog = robot.emojmeConversation.startDialog request, 60000
     dm = request.envelope.user.id
-    robot.send {room: dm}, "Hey #{request.envelope.user.name}, in order to refresh the emoji cache I'm gonna need a [user token](https://github.com/jackellenberger/emojme#finding-a-slack-token), just plop that below like ```token: xoxs-...```"
+    robot.send {room: dm}, "Hey #{request.envelope.user.name}, in order to do what you've asked I'm gonna need a [user token](https://github.com/jackellenberger/emojme#finding-a-slack-token), just plop that below like ```token: xoxs-...```"
     robot.send {room: dm}, "You've got 60 seconds. No pressure."
 
     dialog.addChoice /(?:token: )?(.*:)?(xoxs-.*)/i, (tokenResponse) ->
@@ -50,8 +64,8 @@ module.exports = (robot) ->
     else
       request.send "The emoji cache has gone missing, would you mind updating it? I've sent you few instructions."
       self = this # Guh
-      self.do_login request, request, (subdomain, token) ->
-        self.emojme_download request, request, subdomain, token, (emojiList, lastUser, lastUpdate) ->
+      self.do_login request, (subdomain, token) ->
+        self.emojme_download request, subdomain, token, (emojiList, lastUser, lastUpdate) ->
           action(emojiList, lastUser, lastUpdate)
 
   find_emoji: (request, emojiList, emojiName, action) ->
@@ -123,3 +137,12 @@ module.exports = (robot) ->
     emoji_archive ?= {}
     delete emoji_archive[emoji_name]
     robot.brain.set "emojme.emojiArchive", emoji_archive
+  react: (request, reaction) ->
+    try
+      robot.adapter.client.web.reactions.add(reaction, {
+        channel: request.message.user.room,
+        timestamp: request.message.id
+      })
+    catch e
+      if robot.adapter.client
+        console.log("[WARNING] unable to react to message: #{e} #{e.stack}")
