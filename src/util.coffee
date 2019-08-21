@@ -15,13 +15,13 @@ module.exports = (robot) ->
       new Promise (resolve) ->
         resolve {subdomain: {emojiList: JSON.parse(fs.readFileSync(process.env.LOCAL_EMOJI, 'utf-8'))}}
     else
-      emojme.download(subdomain, token, {})
+      emojme.download(subdomain, token, {bustCache: true, output: true})
 
     downloadPromise
       .then (downloadResult) =>
         lastUser = request.message.user.name
         lastUpdate = Date(Date.now()).toString()
-        emojiList = downloadResult[Object.keys(downloadResult)[0]].emojiList
+        emojiList = downloadResult[subdomain].emojiList
         robot.brain.set 'emojme.AuthUser', lastUser
         robot.brain.set 'emojme.LastUpdatedAt', lastUpdate
         robot.brain.set 'emojme.AdminList', emojiList
@@ -33,14 +33,23 @@ module.exports = (robot) ->
         request.send("Looks like something went wrong, is your token correct?")
 
   emojme_favorites: (request, subdomain, token, action) ->
-    favoritesPromise = emojme.favorites subdomain, token, {}
+    favoritesPromise = emojme.favorites subdomain, token, {lite: true}
     favoritesPromise
       .then (favoritesResult) =>
         # TODO: save results to redis for global stats
-        action favoritesResult[Object.keys(favoritesResult)[0]].favoritesResult.favoriteEmojiAdminList
+        action favoritesResult[subdomain].favoritesResult.favoriteEmojiAdminList
       .catch (e) ->
         console.log("[ERROR] #{e} #{e.stack}")
         request.send("Looks like something went wrong, is your token correct?")
+
+  emojme_alias: (request, subdomain, token, original, alias, action) ->
+    aliasPromise = emojme.add subdomain, token, {name: alias, aliasFor: original, allowCollisions: true}
+    aliasPromise
+      .then (addResult) =>
+        action addResult[subdomain]
+      .catch (e) ->
+        console.log("[ERROR] #{e} #{e.stack}")
+        request.send("Looks like something went wrong, your token correct?")
 
   do_login: (request, action) ->
     dialog = robot.emojmeConversation.startDialog request, 60000

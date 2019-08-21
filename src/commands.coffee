@@ -2,26 +2,27 @@
 #   A way to interact with emojme functions
 #
 # Commands:
-#   hubot emojme help - print help message
-#   hubot emojme status - print the age of the cache and who last updated it
-#   hubot emojme refresh (with <subdomain>:<token>) - authenticate and grab list of emoji, enabling all other commands. If subdomain and token are not provided up front they will be asked for. Do not post tokens in public channels.
-#   hubot emojme random - give a random emoji
-#   hubot emojme N random - give N random emoji
-#   hubot emojme random emoji by <user> - give a random emoji made by <user>
-#   hubot emojme dump all emoji (with metadata)? - upload a list of emoji names, or emoji metadata if requested
-#   hubot emojme tell me about :<emoji>: - give the provided emoji's metadata
-#   hubot emojme enhance :<emoji>: - give the provided emoji's source image at highest availalbe resolution
-#   hubot emojme who made :<emoji>: - give the provided emoji's author.
-#   hubot emojme when was :<emoji>: made - give the provided emoji's creation date, if available.
-#   hubot emojme how many emoji has <author> made? - give the provided author's emoji statistics.
-#   hubot emojme show me the emoji <author> made - give the provided author's emoji
-#   hubot emojme show me all the new emoji since <some NLP interpretable day> - show all the emoji created since 'yesterday', 'three days ago', 'last week', etc.
-#   hubot emojme who all has made an emoji? - list all emoji authors
-#   hubot emojme commit this to the record of :<emoji>:: <message> - save an explanation for the given emoji
-#   hubot emojme purge the record of :<emoji>: - delete all explanation for the given emoji
-#   hubot emojme what does the record state about :<emoji>:? - read the emoji's explanation if it exists
-#   hubot emojme what emoji are documented? - give the names of all documented emoji
-#   hubot emojme show me my <10> most used emoji - give the usage counts of the emoji you use to +react most often
+#   hubot emojme [00] help - print help message
+#   hubot emojme [01] refresh (with <subdomain>:<token>) - authenticate and grab list of emoji, enabling all other commands. If subdomain and token are not provided up front they will be asked for. Do not post tokens in public channels.
+#   hubot emojme [02] status - print the age of the cache and who last updated it
+#   hubot emojme [03] random - give a random emoji
+#   hubot emojme [04] N random - give N random emoji
+#   hubot emojme [05] random emoji by <user> - give a random emoji made by <user>
+#   hubot emojme [06] tell me about :<emoji>: - give the provided emoji's metadata
+#   hubot emojme [07] when was :<emoji>: made - give the provided emoji's creation date, if available.
+#   hubot emojme [08] enhance :<emoji>: - give the provided emoji's source image at highest availalbe resolution
+#   hubot emojme [09] how many emoji has <author> made? - give the provided author's emoji statistics.
+#   hubot emojme [10] who made :<emoji>: - give the provided emoji's author.
+#   hubot emojme [11] show me the emoji <author> made - give the provided author's emoji
+#   hubot emojme [12] who all has made an emoji? - list all emoji authors
+#   hubot emojme [13] show me my <10> most used emoji - give the usage counts of the emoji you use to +react most often
+#   hubot emojme [14] show me all the new emoji since <some NLP interpretable day> - show all the emoji created since 'yesterday', 'three days ago', 'last week', etc.
+#   hubot emojme [15] dump all emoji (with metadata)? - upload a list of emoji names, or emoji metadata if requestek
+#   hubot emojme [16] commit this to the record of :<emoji>:: <message> - save an explanation for the given emoji
+#   hubot emojme [17] purge the record of :<emoji>: - delete all explanation for the given emoji
+#   hubot emojme [18] what does the record state about :<emoji>:? - read the emoji's explanation if it exists
+#   hubot emojme [19] what emoji are documented? - give the names of all documented emoji
+#   hubot emojme [20] alias :<existing>: to :<new-alias>: - create a new emoji directly from slack sort of
 #
 # Author:
 #   Jack Ellenberger <jellenberger@uchicago.edu>
@@ -76,8 +77,20 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
         favoritesString = favorites.slice(0, count).map (emojiData) ->
           emojiName = Object.keys(emojiData)[0]
           emojiUsage = emojiData[emojiName].usage
-          "\n:#{emojiName}:: #{emojiUsage}"
+          "\n:#{emojiName}: #{emojiUsage} times"
         request.send("You have reacted with: #{favoritesString}")
+
+  robot.respond /emojme alias :(.*): (?:to )?:(.*):/i, (request) ->
+    original = request.match[1].trim()
+    alias = request.match[2].trim()
+    util.do_login request, (subdomain, token) ->
+      util.emojme_alias request, subdomain, token, original, alias, (addResult) ->
+        if addResult.errorList.length > 0
+          request.send "Bad news, we got some errors just then: #{addResult.errorList.map((e) => e.error)}"
+        else if addResult.collisions.length > 0
+          request.send "uhhh was that name taken?"
+        else if addResult.emojiList.length > 0
+          request.send "Successfully added :#{alias}:"
 
   robot.respond /(?:emojme )?(?:(\d*) )?random(?: emoji)?(?: by (.*))?/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
