@@ -2,8 +2,6 @@
 #   An old way to interact with emojme functions
 #
 # Commands:
-#   hubot emojme how do - a little explainer on how to use emojme
-#   hubot emojme refresh with my super secret user token that i will not post in any public channels: <token> - authenticate with user token if given
 #
 # Author:
 #   Jack Ellenberger <jellenberger@uchicago.edu>

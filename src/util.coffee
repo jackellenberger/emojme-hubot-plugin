@@ -3,6 +3,8 @@
 
 emojme = require 'emojme'
 fs = require 'graceful-fs'
+one_day = 1000 * 60 * 60 * 24
+inspect = require('util').inspect
 
 module.exports = (robot) ->
   ensure_no_public_tokens: (request, token) ->
@@ -11,6 +13,7 @@ module.exports = (robot) ->
       request.send("Don't go posting slack auth tokens in public channels ya dummy. Delete that or I'm telling mom.")
 
   emojme_download: (request, subdomain, token, action) ->
+    self = this
     downloadPromise = if process.env.LOCAL_EMOJI
       new Promise (resolve) ->
         resolve {subdomain: {emojiList: JSON.parse(fs.readFileSync(process.env.LOCAL_EMOJI, 'utf-8'))}}
@@ -29,41 +32,96 @@ module.exports = (robot) ->
         request.send("#{request.message.user.name} updated the emoji cache, make sure to thank them!")
         action(emojiList, lastUser, lastUpdate)
       .catch (e) ->
+        self.expire_user_auth request.envelope.user.id
         console.log("[ERROR] #{e} #{e.stack}")
         request.send("Looks like something went wrong, is your token correct?")
+        throw e
 
   emojme_favorites: (request, subdomain, token, action) ->
+    self = this
     favoritesPromise = emojme.favorites subdomain, token, {lite: true}
     favoritesPromise
       .then (favoritesResult) =>
         # TODO: save results to redis for global stats
         action favoritesResult[subdomain].favoritesResult.favoriteEmojiAdminList
       .catch (e) ->
+        self.expire_user_auth request.envelope.user.id
         console.log("[ERROR] #{e} #{e.stack}")
         request.send("Looks like something went wrong, is your token correct?")
+        throw e
 
   emojme_alias: (request, subdomain, token, original, alias, action) ->
+    self = this
     aliasPromise = emojme.add subdomain, token, {name: alias, aliasFor: original, allowCollisions: true}
     aliasPromise
       .then (addResult) =>
         action addResult[subdomain]
       .catch (e) ->
+        self.expire_user_auth request.envelope.user.id
         console.log("[ERROR] #{e} #{e.stack}")
-        request.send("Looks like something went wrong, your token correct?")
+        request.send("Looks like something went wrong, is your token correct?")
+        throw e
 
   do_login: (request, action) ->
-    dialog = robot.emojmeConversation.startDialog request, 60000
-    dm = request.envelope.user.id
-    robot.send {room: dm}, "Hey #{request.envelope.user.name}, in order to do what you've asked I'm gonna need a [user token](https://github.com/jackellenberger/emojme#finding-a-slack-token), just plop that below like ```token: xoxs-...```"
-    robot.send {room: dm}, "You've got 60 seconds. No pressure."
+    self = this
+    user_id = request.envelope.user.id
+
+    auth = self.get_user_auth user_id
+    if auth.token64 and auth.subdomain and (Date.now() < auth.expiration)
+      self.use_cached_auth request, auth, action
+    else
+      self.collect_new_auth request, action
+
+  use_cached_auth: (request, auth, action) ->
+    self = this
+    user_id = request.envelope.user.id
+    token = Buffer.from(auth.token64, 'base64').toString('ascii')
+    robot.send {room: user_id}, "Cool, we'll just use the auth you have saved. If it doesn't work, I'll ask for a new token.\nCarrying on back at #{self.message_url request}"
+
+    action(auth.subdomain, token)
+      .catch (e) ->
+        request.send {room: user_id}, "Bad news, that didn't work out. I'll clear out your saved token and you can just try again from scratch. Sorry bout that!"
+
+  collect_new_auth: (request, action) ->
+    self = this
+    user_id = request.envelope.user.id
+    self.expire_user_auth user_id
+    dialog = robot.emojmeConversation.startDialog request, 300000 # I know this isn't 60 seconds it's a joke
+    robot.send {room: user_id}, "Hey #{request.envelope.user.name}, in order to do what you've asked I'm gonna need a user token. Visit https://github.com/jackellenberger/emojme#finding-a-slack-token to find yours, then just plop it below like ```token: xoxs-...``` You've got 60 seconds. No pressure."
 
     dialog.addChoice /(?:token: )?(.*:)?(xoxs-.*)/i, (tokenResponse) ->
       subdomain = (tokenResponse.match[1] || request.message.user.slack.team_id).replace(/:/g,'').trim()
       token = tokenResponse.match[2].trim()
+      robot.send {room: user_id}, "Thanks! Carrying on back at #{self.message_url request}"
+
       action(subdomain, token)
-      robot.send {room: dm}, "Thanks! Carrying on..."
+        .then () =>
+          robot.send {room: user_id}, "Want to save that auth for a day? If so, just slap me with a `yeah brother`"
+          dialog.addChoice /(?:hell )?yeah brother/i, (saveResponse) ->
+            self.set_user_auth user_id, token, subdomain
+            robot.send {room: user_id}, "Saved."
+        .catch () -> {}
+          # handled upstream
+
+  get_user_auth: (user_id) ->
+    return {
+      token64: (robot.brain.get "emojme.#{user_id}.token"),
+      expiration: (robot.brain.get "emojme.#{user_id}.expiration"),
+      subdomain: (robot.brain.get "emojme.#{user_id}.subdomain"),
+    }
+
+  set_user_auth: (user_id, token, subdomain) ->
+    robot.brain.set "emojme.#{user_id}.token", Buffer.from(token).toString('base64')
+    robot.brain.set "emojme.#{user_id}.expiration", (Date.now() + one_day)
+    robot.brain.set "emojme.#{user_id}.subdomain", subdomain
+
+  expire_user_auth: (user_id) ->
+    robot.brain.set "emojme.#{user_id}.token", null
+    robot.brain.set "emojme.#{user_id}.expiration", null
+    robot.brain.set "emojme.#{user_id}.subdomain", null
 
   require_cache: (request, action) ->
+    self = this
     if (
       (emojiList = robot.brain.get 'emojme.AdminList' ) &&
       (lastUser = robot.brain.get 'emojme.AuthUser' ) &&
@@ -72,10 +130,14 @@ module.exports = (robot) ->
       action emojiList, lastUser, lastRefresh
     else
       request.send "The emoji cache has gone missing, would you mind updating it? I've sent you few instructions."
-      self = this # Guh
       self.do_login request, (subdomain, token) ->
         self.emojme_download request, subdomain, token, (emojiList, lastUser, lastUpdate) ->
           action(emojiList, lastUser, lastUpdate)
+
+
+  message_url: (request) ->
+    team_id = try request.message.user.slack.team_id catch e then "team_id"
+    "https://#{team_id}.slack.com/archives/#{team_id}/#{request.id}"
 
   find_emoji: (request, emojiList, emojiName, action) ->
     if typeof emojiName != 'undefined' && (emoji = emojiList.find((emoji) -> emoji.name == emojiName))

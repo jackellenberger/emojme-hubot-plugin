@@ -23,6 +23,7 @@
 #   hubot emojme [18] what does the record state about :<emoji>:? - read the emoji's explanation if it exists
 #   hubot emojme [19] what emoji are documented? - give the names of all documented emoji
 #   hubot emojme [20] alias :<existing>: to :<new-alias>: - create a new emoji directly from slack sort of
+#   hubot emojme [21] forget my login - delete cached user token. If not touched a login expires in 24 hours
 #
 # Author:
 #   Jack Ellenberger <jellenberger@uchicago.edu>
@@ -48,9 +49,13 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
 """)
 
 
-  robot.respond /(emojme|token).*(xoxs-\d{12}-\d{12}-\d{12}-\w{64})/, (request) ->
-    token = request.match
+  robot.respond /(emojme|token).*(xoxs-\d{12}-\d{12}-\d{12}-\w{64})/i, (request) ->
+    token = request.match[1]
     util.ensure_no_public_tokens request, token
+
+  robot.respond /emojme (?:forget|clear|expire) my (?:login|credentials|creds|auth|password|token)/i, (request) ->
+    util.expire_user_auth request.envelope.user.id
+    util.react request, "done"
 
   robot.respond /emojme status/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
