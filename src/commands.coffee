@@ -79,7 +79,7 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
           emojiName = Object.keys(emojiData)[0]
           emojiUsage = emojiData[emojiName].usage
           "\n:#{emojiName}: #{emojiUsage} times"
-        request.send("You have reacted with: #{favoritesString}")
+        request.send("#{request.envelope.user.name} has reacted with: #{favoritesString}")
 
   robot.respond /emojme alias :(.*): (?:to )?:(.*):/i, (request) ->
     original = request.match[1].trim()
