@@ -56,8 +56,8 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
       request.send("#{lastUser} last refreshed the emoji list back at #{lastRefresh} when there were #{emojiList.length} emoji")
 
   robot.respond /emojme refresh$/i, (request) ->
+    util.react request, "stand-by"
     util.do_login request, (subdomain, token) ->
-      util.react request, "stand-by"
       util.emojme_download request, subdomain, token, (emojiList, lastUser, lastUpdate) ->
         util.react request, "done"
         request.send("emoji database refresh complete, found #{emojiList.length} of em. :nice:")
@@ -70,8 +70,8 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
 
   robot.respond /emojme (?:what are |show me )?my (\d* )?(?:favorites?|most used)(?: emoji)?\??/i, (request) ->
     count = parseInt (request.match[1] || "10").trim(), 10
+    util.react request, "stand-by"
     util.do_login request, (subdomain, token) ->
-      util.react request, "stand-by"
       util.emojme_favorites request, subdomain, token, (favorites) ->
         util.react request, "done"
         favoritesString = favorites.slice(0, count).map (emojiData) ->
