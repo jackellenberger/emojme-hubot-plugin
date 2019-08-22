@@ -5,7 +5,7 @@ emojme = require 'emojme'
 fs = require 'graceful-fs'
 
 module.exports = (robot) ->
-  ensure_no_public_tokens: (request) ->
+  ensure_no_public_tokens: (request, token) ->
     if request.message.room[0] == 'C'
       slack.chat.delete({token: token, channel: request.message.room, ts: request.message.id})
       request.send("Don't go posting slack auth tokens in public channels ya dummy. Delete that or I'm telling mom.")

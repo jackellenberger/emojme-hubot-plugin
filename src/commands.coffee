@@ -48,8 +48,9 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
 """)
 
 
-  robot.respond /emojme.*xoxs-\d{12}-\d{12}-\d{12}-\w{64}/, (request) ->
-    util.ensure_no_public_tokens request
+  robot.respond /(emojme|token).*(xoxs-\d{12}-\d{12}-\d{12}-\w{64})/, (request) ->
+    token = request.match
+    util.ensure_no_public_tokens request, token
 
   robot.respond /emojme status/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
