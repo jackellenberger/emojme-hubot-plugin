@@ -149,7 +149,7 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
   robot.respond /emojme (?:enhance|show me|source)\!? :(.*?):/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       util.find_emoji request, emojiList, request.match[1].replace(/:/g,''), (emoji, _) ->
-        request.send("#{emoji.url}")
+        request.send("#{emoji.url}?x=#{Date.now()}")
 
   robot.respond /emojme who made (?:the )?:(.*?):(?: emoji)?\??/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
