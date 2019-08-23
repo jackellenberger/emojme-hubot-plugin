@@ -137,7 +137,9 @@ module.exports = (robot) ->
 
   message_url: (request) ->
     team_id = try request.message.user.slack.team_id catch e then "team_id"
-    "https://#{team_id}.slack.com/archives/#{team_id}/#{request.id}"
+    room_id = try request.message.room catch e then "room_id"
+    request_id = try request.message.id catch e then "message_id"
+    "https://#{team_id}.slack.com/archives/#{room_id}/#{request_id}"
 
   find_emoji: (request, emojiList, emojiName, action) ->
     if typeof emojiName != 'undefined' && (emoji = emojiList.find((emoji) -> emoji.name == emojiName))
