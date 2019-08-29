@@ -96,8 +96,8 @@ module.exports = (robot) ->
 
       action(subdomain, token)
         .then () =>
-          robot.send {room: user_id}, "Want to save that auth for a day? If so, just slap me with a `yeah brother`"
-          dialog.addChoice /(?:hell )?yeah brother/i, (saveResponse) ->
+          robot.send {room: user_id}, "Want to save that auth for a day? If so, just slap me with a `yeah doggo`"
+          dialog.addChoice /:?(?:highfive|high_five|high-five|highfive-1590):?|(?:hell )?yeah dog(?:go)?/i, (saveResponse) ->
             self.set_user_auth user_id, token, subdomain
             robot.send {room: user_id}, "Saved."
         .catch () -> {}
