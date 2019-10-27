@@ -4,54 +4,57 @@ A hubot script to call [emojme](https://github.com/jackellenberger/emojme) plugi
 
 ## Commands
 
-* hubot emojme how do
-    * print how to use emojme and how to get a user token
-```
-Hey! [emojme](https://github.com/jackellenberger/emojme) is a project to mess with slack emoji.
-In order to do anything with it here, you'll need to make sure that hubot knows about your emoji, which you can check on with `emojme status`.
-If there is no emoji cache or it's out of date, create a DM with hubot and write the following command:
-  `emojme refresh with my super secret user token that i will not post in any public channels: <YOUR TOKEN>`
-```
+* hubot emojme [00] help - print help message
+  * ```
+    Hey there! emojme is an project made to interface with the dark parts of slack's api: the emoji endpoints.
 
-`<YOUR TOKEN>` can be got from several places, and may update unexpectedly. [Find out how to find your token here](https://github.com/jackellenberger/emojme#finding-a-slack-token).
+    In order to do anything with it here, you'll need to make sure that hubot knows about your list of emoji, which you can check on with `emojme status`.
 
-* hubot emojme status
-    * print the age of the cache and who last updated it
-    * `<user> last refreshed the emoji list back at <date> when there were <emoji count> emoji`
+    If there is no emoji cache or it's out of date, you can fix that with `@hubot emojme refresh`, that'll lead you by the hand to getting a user token and updating the list of emoji that I know about. There will be a 60 second time window to enter your token, so get a head start by checking out the docs [on the emojme repo](https://github.com/jackellenberger/emojme#finding-a-slack-token)
 
-* hubot refresh with my super secret user token that i will not post in any public channels $token
-    * authenticate with user token if given (only works in private DMs)
-    * `Updating emoji database, this may take a few moments...` ... `emoji database refresh complete`
+    Questions, comments, concerns? Ask em either on emojme, or on [this project](https://github.com/jackellenberger/emojme-hubot-plugin), whatever's relevant.
+    ```
+* hubot emojme [01] refresh (with <subdomain>:<token>) - authenticate and grab list of emoji, enabling all other commands. If subdomain and token are not provided up front they will be asked for. Do not post tokens in public channels.
 
-* hubot emojme list emoji (metadata)?
-    * upload a list of emoji names, or emoji metadata if requested
-    * `here are all emoji as of <date>` `file attachment`
+* hubot emojme [02] status - print the age of the cache and who last updated it
 
-* hubot emojme who made $emoji
-    * give the provided emoji's author.
-    * `That would be <author>`
+* hubot emojme [03] random - give a random emoji
 
-* hubot emojme tell me about $emoji
-    * give the provided emoji's metadata
-    * `Ah, :<emoji>:, i know it well` `{ emoji metadata }`
+* hubot emojme [04] N random - give N random emoji
 
-* hubot emojme how many emoji has $author made?
-    * give the provided author's emoji statistics.
-    * `looks like <author> has <total> emoji, <original> originals, and <aliases> aliases`
+* hubot emojme [05] random emoji by <user> - give a random emoji made by <user>
 
-* hubot emojme show me the emoji $author made
-    * give the provided author's emoji, either in a message (if count < 25) or in a thread (if count > 25)
-    * `:emoji1: :emoji2: ...`
+* hubot emojme [06] tell me about :<emoji>: - give the provided emoji's metadata
 
-* hubot emojme commit this to the record of $emoji: $origin-story
-    * saves an emoji's origin story to the robo brain. Make sure you have some form of persistence set up.
-    * hubot will reacti with `:gavel:` on success
+* hubot emojme [07] when was :<emoji>: made - give the provided emoji's creation date, if available.
 
-* hubot emojme what does the record state for $emoji?
-    * prints an origin story, if one has been provided earlier
+* hubot emojme [08] enhance :<emoji>: - give the provided emoji's source image at highest availalbe resolution
 
-* hubot emojme which emoji are documented?
-    * prints all emoji with origin stories
+* hubot emojme [09] how many emoji has <author> made? - give the provided author's emoji statistics.
+
+* hubot emojme [10] who made :<emoji>: - give the provided emoji's author.
+
+* hubot emojme [11] show me the emoji <author> made - give the provided author's emoji
+
+* hubot emojme [12] who all has made an emoji? - list all emoji authors
+
+* hubot emojme [13] show me my <10> most used emoji - give the usage counts of the emoji you use to +react most often
+
+* hubot emojme [14] show me all the new emoji since <some NLP interpretable day> - show all the emoji created since 'yesterday', 'three days ago', 'last week', etc.
+
+* hubot emojme [15] dump all emoji (with metadata)? - upload a list of emoji names, or emoji metadata if requestek
+
+* hubot emojme [16] commit this to the record of :<emoji>:: <message> - save an explanation for the given emoji
+
+* hubot emojme [17] purge the record of :<emoji>: - delete all explanation for the given emoji
+
+* hubot emojme [18] what does the record state about :<emoji>:? - read the emoji's explanation if it exists
+
+* hubot emojme [19] what emoji are documented? - give the names of all documented emoji
+
+* hubot emojme [20] alias :<existing>: to :<new-alias>: - create a new emoji directly from slack sort of
+
+* hubot emojme [21] forget my login - delete cached user token. If not touched a login expires in 24 hours
 
 ## Installation
 
