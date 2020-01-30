@@ -3,8 +3,11 @@
 
 emojme = require 'emojme'
 fs = require 'graceful-fs'
+glob = require 'glob'
 one_day = 1000 * 60 * 60 * 24
 inspect = require('util').inspect
+
+emojiList = []
 
 module.exports = (robot) ->
   ensure_no_public_tokens: (request, token) ->
@@ -23,7 +26,7 @@ module.exports = (robot) ->
     downloadPromise
       .then (downloadResult) =>
         lastUser = request.message.user.name
-        lastUpdate = Date(Date.now()).toString()
+        lastUpdate = Date.now()
         emojiList = downloadResult[subdomain].emojiList
         robot.brain.set 'emojme.AuthUser', lastUser
         robot.brain.set 'emojme.LastUpdatedAt', lastUpdate
@@ -122,17 +125,18 @@ module.exports = (robot) ->
 
   require_cache: (request, action) ->
     self = this
-    if (
-      (emojiList = robot.brain.get 'emojme.AdminList' ) &&
-      (lastUser = robot.brain.get 'emojme.AuthUser' ) &&
-      (lastRefresh = robot.brain.get 'emojme.LastUpdatedAt' )
-    )
-      action emojiList, lastUser, lastRefresh
-    else
-      request.send "The emoji cache has gone missing, would you mind updating it? I've sent you few instructions."
-      self.do_login request, (subdomain, token) ->
-        self.emojme_download request, subdomain, token, (emojiList, lastUser, lastUpdate) ->
-          action(emojiList, lastUser, lastUpdate)
+    self.readAdminList (emojiList) ->
+      if (
+        (emojiList) &&
+        (lastUser = robot.brain.get('emojme.AuthUser') || 'fs-fallback') &&
+        (lastRefresh = robot.brain.get 'emojme.LastUpdatedAt')
+      )
+        action emojiList, lastUser, lastRefresh
+      else
+        request.send "The emoji cache has gone missing, would you mind updating it? I've sent you few instructions."
+        self.do_login request, (subdomain, token) ->
+          self.emojme_download request, subdomain, token, (emojiList, lastUser, lastUpdate) ->
+            action(emojiList, lastUser, lastUpdate)
 
 
   message_url: (request) ->
@@ -219,3 +223,23 @@ module.exports = (robot) ->
     catch e
       if robot.adapter.client
         console.log("[WARNING] unable to react to message: #{e} #{e.stack}")
+  readAdminList: (action) ->
+    self = this
+    brainLastUpdated = robot.brain.get "emojme.LastUpdatedAt"
+    self.getEmojiListLastUpdate (fileLastUpdated, filename) ->
+      if (fileLastUpdated && (!brainLastUpdated || (brainLastUpdated < fileLastUpdated)))
+        fs.readFile filename, (err, data) ->
+          adminList = JSON.parse(data)
+          robot.brain.set "emojme.LastUpdatedAt", fileLastUpdated
+          robot.brain.set "emojme.AdminList", adminList
+          action adminList
+      else if (brainLastUpdated)
+        action robot.brain.get "emojme.AdminList"
+      else
+        action null
+  getEmojiListLastUpdate: (action) ->
+    glob "build/*adminList.json", (err, files) ->
+      if files.length
+        action fs.statSync(files[0]).mtime, files[0]
+      else
+        action null

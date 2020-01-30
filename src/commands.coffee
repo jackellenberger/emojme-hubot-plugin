@@ -59,7 +59,7 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
 
   robot.respond /emojme status/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
-      request.send("#{lastUser} last refreshed the emoji list back at #{lastRefresh} when there were #{emojiList.length} emoji")
+      request.send("#{lastUser} last refreshed the emoji list back at #{Date(lastRefresh).toString()} when there were #{emojiList.length} emoji")
 
   robot.respond /emojme refresh$/i, (request) ->
     util.react request, "stand-by"
