@@ -88,12 +88,13 @@ module.exports = (robot) ->
   collect_new_auth: (request, action) ->
     self = this
     user_id = request.envelope.user.id
+    team_id = request.envelope.user.slack.team_id || request.message.user.slack.team_id || process.env.SLACK_TEAM_ID
     self.expire_user_auth user_id
     dialog = robot.emojmeConversation.startDialog request, 300000 # I know this isn't 60 seconds it's a joke
-    robot.send {room: user_id}, "Hey #{request.envelope.user.name}, in order to do what you've asked I'm gonna need a user token. Visit https://github.com/jackellenberger/emojme#finding-a-slack-token to find yours, then just plop it below like ```token: xoxs-...``` You've got 60 seconds. No pressure."
+    robot.send {room: user_id}, "Hey #{request.envelope.user.name}, in order to do what you've asked I'm gonna need a user token.\nVisit https://github.com/jackellenberger/emojme#finding-a-slack-token to find yours, then just plop it below like \"xoxs-...\"\nYou've got a minute or so, and if you heck up you'll have to start again."
 
-    dialog.addChoice /(?:token: )?(.*:)?(xoxs-.*)/i, (tokenResponse) ->
-      subdomain = (tokenResponse.match[1] || request.message.user.slack.team_id).replace(/:/g,'').trim()
+    dialog.addChoice /(?:(\w*):)?(xoxs-[\w-]*)/i, (tokenResponse) ->
+      subdomain = (tokenResponse.match[1] || team_id).replace(/:/g,'').trim()
       token = tokenResponse.match[2].trim()
       robot.send {room: user_id}, "Thanks! Carrying on back at #{self.message_url request}"
 
