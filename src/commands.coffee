@@ -24,6 +24,7 @@
 #   hubot emojme [19] what emoji are documented? - give the names of all documented emoji
 #   hubot emojme [20] alias :<existing>: to :<new-alias>: - create a new emoji directly from slack sort of
 #   hubot emojme [21] forget my login - delete cached user token. If not touched a login expires in 24 hours
+#   hubot emojme [22] double enhance :<emoji>: - enhance the emoji to 512x512. gifs only give the first frame. s/o to @kevkid
 #
 # Author:
 #   Jack Ellenberger <jellenberger@uchicago.edu>
@@ -150,6 +151,18 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       util.find_emoji request, emojiList, request.match[1].replace(/:/g,''), (emoji, _) ->
         request.send("#{emoji.url}?x=#{Date.now()}")
+
+  robot.respond /emojme double enhance :(.*?):/i, (request) ->
+    util.require_cache request, (emojiList, lastUser, lastRefresh) ->
+      util.find_emoji request, emojiList, request.match[1].replace(/:/g,''), (emoji, _) ->
+        util.react request, "stand-by"
+        util.doubleEnhance emoji.url, emoji.name, (filename, enhanced_image_file_stream) ->
+          opts = {
+            title: "#{emoji.name} ENHANCE!!1!",
+            file: enhanced_image_file_stream,
+            channels: request.message.room
+          }
+          robot.adapter.client.web.files.upload(filename, opts)
 
   robot.respond /emojme who made (?:the )?:(.*?):(?: emoji)?\??/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->

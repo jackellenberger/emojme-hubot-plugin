@@ -4,8 +4,11 @@
 emojme = require 'emojme'
 fs = require 'graceful-fs'
 glob = require 'glob'
-one_day = 1000 * 60 * 60 * 24
+sharp = require 'sharp'
+request = require 'request'
 inspect = require('util').inspect
+
+one_day = 1000 * 60 * 60 * 24
 
 emojiList = []
 
@@ -244,3 +247,15 @@ module.exports = (robot) ->
         action fs.statSync(files[0]).mtime, files[0]
       else
         action null
+
+  doubleEnhance: (url, name, action) ->
+    request {url, encoding: null}, (err, res, body) ->
+      if err
+        console.log("[ERROR] error grabbing url: #{url} #{err.message}")
+      type = url.split(".").pop()
+      filename = "build/#{name}_#{Date.now()}.#{type}"
+      sharp(body).resize(512, 512).toFile filename, (err, info) ->
+        if err
+          console.log("[ERROR] scaling emoji: #{name} #{err.message}")
+        console.log("wrote out #{filename}")
+        action filename, fs.createReadStream(filename)

@@ -56,6 +56,8 @@ A hubot script to call [emojme](https://github.com/jackellenberger/emojme) plugi
 
 * hubot emojme [21] forget my login - delete cached user token. If not touched a login expires in 24 hours
 
+* hubot emojme [22] double enhance :<emoji>: - enhance the emoji to 512x512. gifs only give the first frame. s/o to @kevkid
+
 ## Installation
 
 In hubot project repo, run:
