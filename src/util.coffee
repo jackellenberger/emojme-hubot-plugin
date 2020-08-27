@@ -68,6 +68,19 @@ module.exports = (robot) ->
         request.send("Looks like something went wrong, is your token correct?")
         throw e
 
+  emojme_add: (request, subdomain, token, emoji_name, url, action) ->
+    self = this
+    addPromise = emojme.add subdomain, token, {name: emoji_name, src: url, allowCollisions: true}
+    addPromise
+      .then (addResult) =>
+        action addResult[subdomain]
+      .catch (e) ->
+        self.expire_user_auth request.envelope.user.id
+        console.log("[ERROR] #{e} #{e.stack}")
+        request.send("Looks like something went wrong, is your token correct?")
+        throw e
+
+
   do_login: (request, action) ->
     self = this
     user_id = request.envelope.user.id

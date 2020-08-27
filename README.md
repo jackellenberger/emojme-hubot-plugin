@@ -58,6 +58,8 @@ A hubot script to call [emojme](https://github.com/jackellenberger/emojme) plugi
 
 * hubot emojme [22] double enhance :<emoji>: - enhance the emoji to 512x512. gifs only give the first frame. s/o to @kevkid
 
+* hubot emojme [23] add :<emoji>: url - create a new emoji using the given image, make sure the url ends in the format
+
 ## Installation
 
 In hubot project repo, run:

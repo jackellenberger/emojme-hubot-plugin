@@ -25,6 +25,7 @@
 #   hubot emojme [20] alias :<existing>: to :<new-alias>: - create a new emoji directly from slack sort of
 #   hubot emojme [21] forget my login - delete cached user token. If not touched a login expires in 24 hours
 #   hubot emojme [22] double enhance :<emoji>: - enhance the emoji to 512x512. gifs only give the first frame. s/o to @kevkid
+#   hubot emojme [23] add :<emoji>: url - create a new emoji using the given image, make sure the url ends in the format
 #
 # Author:
 #   Jack Ellenberger <jellenberger@uchicago.edu>
@@ -98,6 +99,17 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
           request.send "uhhh was that name taken?"
         else if addResult.emojiList.length > 0
           request.send "Successfully added :#{alias}:"
+
+  robot.respond /emojme add :(.*): (.*)/i, (request) ->
+    emoji_name = request.match[1].trim()
+    url = request.match[2].trim()
+    util.do_login request, (subdomain, token) ->
+      util.emojme_add request, subdomain, token, emoji_name, url, (response) ->
+        console.log(response)
+        if response.errorList
+          request.send("Ope, ran into something: #{response.errorList[0].error}")
+        else
+          request.send("check it :#{emoji_name}:")
 
   robot.respond /(?:emojme )?(?:(\d*) )?random(?: emoji)?(?: by (.*))?/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
