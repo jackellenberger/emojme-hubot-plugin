@@ -26,6 +26,7 @@
 #   hubot emojme [21] forget my login - delete cached user token. If not touched a login expires in 24 hours
 #   hubot emojme [22] double enhance :<emoji>: - enhance the emoji to 512x512. gifs only give the first frame. s/o to @kevkid
 #   hubot emojme [23] add :<emoji>: url - create a new emoji using the given image, make sure the url ends in the format
+#   hubot emojme [24] who's responsible for :<emoji>: - the same as "who made," but sassier
 #
 # Author:
 #   Jack Ellenberger <jellenberger@uchicago.edu>
@@ -176,7 +177,7 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
           }
           robot.adapter.client.web.files.upload(filename, opts)
 
-  robot.respond /emojme who made (?:the )?:(.*?):(?: emoji)?\??/i, (request) ->
+  robot.respond /emojme (?:who made|who\'s responsible for) (?:the )?:(.*?):(?: emoji)?\??/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       util.find_emoji request, emojiList, request.match[1].replace(/:/g,''), (emoji, original) ->
         message = "That would be #{emoji.user_display_name}"
