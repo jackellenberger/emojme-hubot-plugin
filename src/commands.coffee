@@ -177,7 +177,7 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
           }
           robot.adapter.client.web.files.upload(filename, opts)
 
-  robot.respond /emojme (?:who made|who\'s responsible for) (?:the )?:(.*?):(?: emoji)?\??/i, (request) ->
+  robot.respond /emojme (?:who made|who(?:\'s| is) responsible for) (?:the )?:(.*?):(?: emoji)?\??/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       util.find_emoji request, emojiList, request.match[1].replace(/:/g,''), (emoji, original) ->
         message = "That would be #{emoji.user_display_name}"
