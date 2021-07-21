@@ -12,38 +12,36 @@ module.exports = (robot) ->
   robot.respond /emojme how do/i, (context) ->
     context.send("""
 Hey! [emojme](https://github.com/jackellenberger/emojme) is a project to mess with slack emoji.
-
 In order to do anything with it here, you'll need to make sure that hubot knows about your emoji, which you can check on with `emojme status`.
+If there is no emoji cache or it's out of date, create a DM with hubot and write the following command:
+  `emojme refresh with my super secret info that i will not post in any public channels: <YOUR AUTH JSON>`
 
-If there is no emoji cache or it's out of date, create a DM with hubot and write the following command: ```
-  emojme refresh with my super secret user token that i will not post in any public channels: <YOUR TOKEN>
-```
-
-<YOUR TOKEN> can be got from several places, and may update unexpectedly. [Find out how to find your token here](https://github.com/jackellenberger/emojme#finding-a-slack-token)
+`<YOUR JSON>` is a combination of slack domain, cookie token, and cookie, all of which need to be grabbed from a logged in slack web page. This information is intentionally short-lived, so use it while you can!. [Find out how to find your auth info here](https://github.com/jackellenberger/emojme#finding-a-slack-token), but the easiest way is via the [Emojme Chrome Extension](https://chrome.google.com/webstore/detail/emojme-emoji-anywhere/nbnaglaclijdfidbinlcnfdbikpbdkog?hl=en-US).
 """)
 
-  robot.respond /emojme refresh (.* )?with my super secret user token that i will not post in any public channels: ([0-9A-z-_]*)/i, (context) ->
-    slack_instance = (context.match[1] || context.message.user.slack.team_id).trim()
-    token = context.match[2].trim()
-    if context.message.room[0] == 'C' # delete that message, keep tokens out of public chat
-      slack.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
-      context.send("Don't go posting auth tokens in public channels ya dummy. Delete that or I'm telling mom.")
-      return
-    else # log in with the provided token
-      context.send("Updating emoji database, this may take a few moments...")
-      emojme.download(slack_instance, token, {})
-        .then (adminList) =>
-          robot.brain.set 'emojme.AuthUser', context.message.user.name
-          robot.brain.set 'emojme.LastUpdatedAt', Date(Date.now()).toString()
-          robot.brain.set 'emojme.AdminList', adminList[Object.keys(adminList)[0]].emojiList
-          context.send("emoji database refresh complete. Probably oughta clean that token up tho.")
-          slack.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
-            .catch (e) ->
-              console.log(e)
-              console.log("Unable to delete #{context.message.id} in channel #{context.message.room}")
-        .catch (e) ->
-          console.log(e)
-          context.send("looks like something went wrong, is your token correct?")
+# Superceded by /emojme refresh with .*/
+  # robot.respond /emojme refresh (.* )?with my super secret user token that i will not post in any public channels: ([0-9A-z-_]*)/i, (context) ->
+  #   slack_instance = (context.match[1] || context.message.user.slack.team_id).trim()
+  #   token = context.match[2].trim()
+  #   if context.message.room[0] == 'C' # delete that message, keep tokens out of public chat
+  #     slack.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
+  #     context.send("Don't go posting auth tokens in public channels ya dummy. Delete that or I'm telling mom.")
+  #     return
+  #   else # log in with the provided token
+  #     context.send("Updating emoji database, this may take a few moments...")
+  #     emojme.download(slack_instance, token, {})
+  #       .then (adminList) =>
+  #         robot.brain.set 'emojme.AuthUser', context.message.user.name
+  #         robot.brain.set 'emojme.LastUpdatedAt', Date(Date.now()).toString()
+  #         robot.brain.set 'emojme.AdminList', adminList[Object.keys(adminList)[0]].emojiList
+  #         context.send("emoji database refresh complete. Probably oughta clean that token up tho.")
+  #         slack.chat.delete({token: token, channel: context.message.room, ts: context.message.id})
+  #           .catch (e) ->
+  #             console.log(e)
+  #             console.log("Unable to delete #{context.message.id} in channel #{context.message.room}")
+  #       .catch (e) ->
+  #         console.log(e)
+  #         context.send("looks like something went wrong, is your token correct?")
 
   # robot.respond /emojme (?:show me|what is|what are) my (?:(\d*) )?(?:favorite|most used) emoji\??)/i, (request) ->
 

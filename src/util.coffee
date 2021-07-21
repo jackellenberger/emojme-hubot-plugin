@@ -18,13 +18,13 @@ module.exports = (robot) ->
       slack.chat.delete({token: token, channel: request.message.room, ts: request.message.id})
       request.send("Don't go posting slack auth tokens in public channels ya dummy. Delete that or I'm telling mom.")
 
-  emojme_download: (request, subdomain, token, action) ->
+  emojme_download: (request, subdomain, token, cookie, action) ->
     self = this
     downloadPromise = if process.env.LOCAL_EMOJI
       new Promise (resolve) ->
         resolve {subdomain: {emojiList: JSON.parse(fs.readFileSync(process.env.LOCAL_EMOJI, 'utf-8'))}}
     else
-      emojme.download(subdomain, token, {bustCache: true, output: true})
+      emojme.download(subdomain, token, cookie, {bustCache: true, output: true})
 
     downloadPromise
       .then (downloadResult) =>
@@ -40,12 +40,12 @@ module.exports = (robot) ->
       .catch (e) ->
         self.expire_user_auth request.envelope.user.id
         console.log("[ERROR] #{e} #{e.stack}")
-        request.send("Looks like something went wrong, is your token correct?")
+        request.send("Looks like something went wrong, is your token correct? Did you provide a Cookie too?")
         throw e
 
-  emojme_favorites: (request, subdomain, token, action) ->
+  emojme_favorites: (request, subdomain, token, cookie, action) ->
     self = this
-    favoritesPromise = emojme.favorites subdomain, token, {lite: true}
+    favoritesPromise = emojme.favorites subdomain, token, cookie, {lite: true}
     favoritesPromise
       .then (favoritesResult) =>
         # TODO: save results to redis for global stats
@@ -53,19 +53,19 @@ module.exports = (robot) ->
       .catch (e) ->
         self.expire_user_auth request.envelope.user.id
         console.log("[ERROR] #{e} #{e.stack}")
-        request.send("Looks like something went wrong, is your token correct?")
+        request.send("Looks like something went wrong, is your token correct? Did you provide a Cookie too?")
         throw e
 
-  emojme_alias: (request, subdomain, token, original, alias, action) ->
+  emojme_alias: (request, subdomain, token, cookie, original, alias, action) ->
     self = this
-    aliasPromise = emojme.add subdomain, token, {name: alias, aliasFor: original, allowCollisions: true}
+    aliasPromise = emojme.add subdomain, token, cookie, {name: alias, aliasFor: original, allowCollisions: true}
     aliasPromise
       .then (addResult) =>
         action addResult[subdomain]
       .catch (e) ->
         self.expire_user_auth request.envelope.user.id
         console.log("[ERROR] #{e} #{e.stack}")
-        request.send("Looks like something went wrong, is your token correct?")
+        request.send("Looks like something went wrong, is your token correct? Did you provide a Cookie too?")
         throw e
 
   emojme_add: (request, subdomain, token, emoji_name, url, action) ->
@@ -86,7 +86,7 @@ module.exports = (robot) ->
     user_id = request.envelope.user.id
 
     auth = self.get_user_auth user_id
-    if auth.token64 and auth.subdomain and (Date.now() < auth.expiration)
+    if auth.token64 and auth.cookie64 and auth.subdomain and (Date.now() < auth.expiration)
       self.use_cached_auth request, auth, action
     else
       self.collect_new_auth request, action
@@ -95,11 +95,12 @@ module.exports = (robot) ->
     self = this
     user_id = request.envelope.user.id
     token = Buffer.from(auth.token64, 'base64').toString('ascii')
+    cookie = Buffer.from(auth.cookie64, 'base64').toString('ascii')
     robot.send {room: user_id}, "Cool, we'll just use the auth you have saved. If it doesn't work, I'll ask for a new token.\nCarrying on back at #{self.message_url request}"
 
-    action(auth.subdomain, token)
+    action(auth.subdomain, token, cookie)
       .catch (e) ->
-        request.send {room: user_id}, "Bad news, that didn't work out. I'll clear out your saved token and you can just try again from scratch. Sorry bout that!"
+        request.send {room: user_id}, "Bad news, that didn't work out. I'll clear out your saved token and cookie and you can just try again from scratch. Sorry bout that!"
 
   collect_new_auth: (request, action) ->
     self = this
@@ -107,18 +108,27 @@ module.exports = (robot) ->
     team_id = request.envelope.user.slack.team_id || request.message.user.slack.team_id || process.env.SLACK_TEAM_ID
     self.expire_user_auth user_id
     dialog = robot.emojmeConversation.startDialog request, 300000 # I know this isn't 60 seconds it's a joke
-    robot.send {room: user_id}, "Hey #{request.envelope.user.name}, in order to do what you've asked I'm gonna need a user token.\nVisit https://github.com/jackellenberger/emojme#finding-a-slack-token to find yours, then just plop it below like \"xoxs-...\"\nYou've got a minute or so, and if you heck up you'll have to start again."
+    robot.send {room: user_id}, "Hey #{request.envelope.user.name}, in order to do what you've asked I'm gonna need a bit of authentication. Use the Emojme Chrome Extension]() to collect an auth blob, or read about how to collect your own [token](https://github.com/jackellenberger/emojme#finding-a-slack-token) and [cookie](https://github.com/jackellenberger/emojme#finding-a-slack-cookie). What I'm looking for is a json string, something like, `{\"token\":\"xoxc-...\",\"cookie\":\"long-inscrutible-string\"}` Just send that alone as message, please."
+    dialog.addChoice /(.*)/i, (authResponse) ->
+      subdomain = request.message.user.slack.team_id.replace(/:/g,'').trim()
+      authJsonString = authResponse.match[1].trim()
 
-    dialog.addChoice /(?:(\w*):)?(xoxs-[\w-]*)/i, (tokenResponse) ->
-      subdomain = (tokenResponse.match[1] || team_id).replace(/:/g,'').trim()
-      token = tokenResponse.match[2].trim()
-      robot.send {room: user_id}, "Thanks! Carrying on back at #{self.message_url request}"
+      try
+        authJson = JSON.parse(authJsonString)
+        token = authJson["token"]
+        cookie = authJson["cookie"]
+        if subdomain and token and cookie
+          robot.send {room: user_id}, "Thanks! Carrying on back at #{self.message_url request}"
+        else
+          throw "Could not determine subdomain, token, and cookie. Malformed input?"
+      catch
+        robot.send {room: user_id}, "Bad news, that didn't work out. Maybe try again? Remember, auth now looks like a json blob, and you need both a token _and_ a cookie."
 
-      action(subdomain, token)
+      action(subdomain, token, cookie)
         .then () =>
           robot.send {room: user_id}, "Want to save that auth for a day? If so, just slap me with a `yeah doggo`"
           dialog.addChoice /:?(?:highfive|high_five|high-five|highfive-1590):?|(?:hell )?yeah dog(?:go)?/i, (saveResponse) ->
-            self.set_user_auth user_id, token, subdomain
+            self.set_user_auth user_id, subdomain, token, cookie
             robot.send {room: user_id}, "Saved."
         .catch () -> {}
           # handled upstream
@@ -126,33 +136,36 @@ module.exports = (robot) ->
   get_user_auth: (user_id) ->
     return {
       token64: (robot.brain.get "emojme.#{user_id}.token"),
+      cookie64: (robot.brain.get "emojme.#{user_id}.cookie"),
       expiration: (robot.brain.get "emojme.#{user_id}.expiration"),
       subdomain: (robot.brain.get "emojme.#{user_id}.subdomain"),
     }
 
-  set_user_auth: (user_id, token, subdomain) ->
-    robot.brain.set "emojme.#{user_id}.token", Buffer.from(token).toString('base64')
-    robot.brain.set "emojme.#{user_id}.expiration", (Date.now() + one_day)
+  set_user_auth: (user_id, subdomain, token, cookie) ->
     robot.brain.set "emojme.#{user_id}.subdomain", subdomain
+    robot.brain.set "emojme.#{user_id}.token", Buffer.from(token).toString('base64')
+    robot.brain.set "emojme.#{user_id}.cookie", Buffer.from(cookie).toString('base64')
+    robot.brain.set "emojme.#{user_id}.expiration", (Date.now() + one_day)
 
   expire_user_auth: (user_id) ->
-    robot.brain.set "emojme.#{user_id}.token", null
-    robot.brain.set "emojme.#{user_id}.expiration", null
     robot.brain.set "emojme.#{user_id}.subdomain", null
+    robot.brain.set "emojme.#{user_id}.token", null
+    robot.brain.set "emojme.#{user_id}.cookie", null
+    robot.brain.set "emojme.#{user_id}.expiration", null
 
   require_cache: (request, action) ->
     self = this
     self.readAdminList (emojiList) ->
       if (
-        (emojiList) &&
-        (lastUser = robot.brain.get('emojme.AuthUser') || 'fs-fallback') &&
-        (lastRefresh = robot.brain.get 'emojme.LastUpdatedAt')
+        (emojiList = robot.brain.get 'emojme.AdminList' ) &&
+        (lastUser = robot.brain.get 'emojme.AuthUser' ) &&
+        (lastRefresh = robot.brain.get 'emojme.LastUpdatedAt' )
       )
         action emojiList, lastUser, lastRefresh
       else
         request.send "The emoji cache has gone missing, would you mind updating it? I've sent you few instructions."
-        self.do_login request, (subdomain, token) ->
-          self.emojme_download request, subdomain, token, (emojiList, lastUser, lastUpdate) ->
+        self.do_login request, (subdomain, token, cookie) ->
+          self.emojme_download request, subdomain, token, cookie, (emojiList, lastUser, lastUpdate) ->
             action(emojiList, lastUser, lastUpdate)
 
 
