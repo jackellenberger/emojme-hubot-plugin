@@ -5,15 +5,15 @@ A hubot script to call [emojme](https://github.com/jackellenberger/emojme) plugi
 ## Commands
 
 * hubot emojme how do
-    * print how to use emojme and how to get a user token
+    * print how to use emojme and how to get authenticated
 ```
 Hey! [emojme](https://github.com/jackellenberger/emojme) is a project to mess with slack emoji.
 In order to do anything with it here, you'll need to make sure that hubot knows about your emoji, which you can check on with `emojme status`.
 If there is no emoji cache or it's out of date, create a DM with hubot and write the following command:
-  `emojme refresh with my super secret user token that i will not post in any public channels: <YOUR TOKEN>`
+  `emojme refresh with my super secret info that i will not post in any public channels: <YOUR AUTH JSON>`
 ```
 
-`<YOUR TOKEN>` can be got from several places, and may update unexpectedly. [Find out how to find your token here](https://github.com/jackellenberger/emojme#finding-a-slack-token).
+`<YOUR JSON>` is a combination of slack domain, cookie token, and cookie, all of which need to be grabbed from a logged in slack web page. This information is intentionally short-lived, so use it while you can!. [Find out how to find your auth info here](https://github.com/jackellenberger/emojme#finding-a-slack-token), but the easiest way is via the [Emojme Chrome Extension](https://chrome.google.com/webstore/detail/emojme-emoji-anywhere/nbnaglaclijdfidbinlcnfdbikpbdkog?hl=en-US).
 
 * hubot emojme status
     * print the age of the cache and who last updated it
