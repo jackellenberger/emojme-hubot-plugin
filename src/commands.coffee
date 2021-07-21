@@ -46,7 +46,7 @@ Hey there! emojme is an project made to interface with the dark parts of slack's
 
 In order to do anything with it here, you'll need to make sure that hubot knows about your list of emoji, which you can check on with `emojme status`.
 
-If there is no emoji cache or it's out of date, you can fix that with `@hubot emojme refresh`, that'll lead you by the hand to getting a user token and updating the list of emoji that I know about. There will be a 60 second time window to enter your token, so get a head start by checking out the docs [on the emojme repo](https://github.com/jackellenberger/emojme#finding-a-slack-token)
+If there is no emoji cache or it's out of date, you can fix that with `@hubot emojme refresh`, that'll lead you by the hand to getting a cookie and a token and updating the list of emoji that I know about. There will be a 60 second time window to enter your cookie and token, so get a head start by checking out the docs [on the emojme repo](https://github.com/jackellenberger/emojme#finding-a-slack-token)
 
 Questions, comments, concerns? Ask em either on emojme, or on [this project](https://github.com/jackellenberger/emojme-hubot-plugin), whatever's relevant.
 """)
@@ -66,22 +66,31 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
 
   robot.respond /emojme refresh$/i, (request) ->
     util.react request, "stand-by"
-    util.do_login request, (subdomain, token) ->
-      util.emojme_download request, subdomain, token, (emojiList, lastUser, lastUpdate) ->
+    util.do_login request, (subdomain, token, cookie) ->
+      util.emojme_download request, subdomain, token, cookie, (emojiList, lastUser, lastUpdate) ->
         util.react request, "done"
         request.send("emoji database refresh complete, found #{emojiList.length} of em. :nice:")
 
-  robot.respond /emojme refresh with (.*:)?(xoxs-.*)/i, (request) ->
-    subdomain = (request.match[1] || request.message.user.slack.team_id).replace(/:/g,'').trim()
-    token = (request.match[2] || null).trim()
-    util.emojme_download request, subdomain, token, (emojiList, lastUser, lastUpdate) ->
-      request.send("emoji database refresh complete, found #{emojiList.length} of em. :nice:")
+  robot.respond /emojme refresh with (.*)/i, (request) ->
+    authJsonString = authResponse.match[1].trim()
+    try
+      authJson = JSON.parse(authJsonString)
+      token = authJson["domain"] || authJson["subdomain"]
+      token = authJson["token"]
+      cookie = authJson["cookie"]
+      if subdomain and token and cookie
+        util.emojme_download request, subdomain, token, cookie, (emojiList, lastUser, lastUpdate) ->
+        request.send("emoji database refresh complete, found #{emojiList.length} of em. :nice:")
+      else
+        throw "Could not determine subdomain, token, and cookie. Malformed input?"
+    catch
+      robot.send {room: user_id}, "Bad news, that didn't work out. Maybe try again? Remember, auth now looks like a json blob, and you need both a token _and_ a cookie."
 
   robot.respond /emojme (?:what are |show me )?my (\d* )?(?:favorites?|most used)(?: emoji)?\??/i, (request) ->
     count = parseInt (request.match[1] || "10").trim(), 10
     util.react request, "stand-by"
-    util.do_login request, (subdomain, token) ->
-      util.emojme_favorites request, subdomain, token, (favorites) ->
+    util.do_login request, (subdomain, token, cookie) ->
+      util.emojme_favorites request, subdomain, token, cookie, (favorites) ->
         util.react request, "done"
         favoritesString = favorites.slice(0, count).map (emojiData) ->
           emojiName = Object.keys(emojiData)[0]
@@ -92,8 +101,8 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
   robot.respond /emojme alias :(.*): (?:to )?:(.*):/i, (request) ->
     original = request.match[1].trim()
     alias = request.match[2].trim()
-    util.do_login request, (subdomain, token) ->
-      util.emojme_alias request, subdomain, token, original, alias, (addResult) ->
+    util.do_login request, (subdomain, token, cookie) ->
+      util.emojme_alias request, subdomain, token, cookie, original, alias, (addResult) ->
         if addResult.errorList.length > 0
           request.send "Bad news, we got some errors just then: #{addResult.errorList.map((e) => e.error)}"
         else if addResult.collisions.length > 0
