@@ -52,7 +52,7 @@ Questions, comments, concerns? Ask em either on emojme, or on <https://github.co
 
 
   robot.hear /{.*xoxc-\d{13}-\d{13}-\d{13}-\w{64}.*}/i, (request) ->
-    authJsonString = request.match[0]
+    authJsonString = request.match[0].replace(/[“”]/g, '"')
     util.ensure_no_public_tokens request, authJsonString
 
   robot.respond /emojme (?:forget|clear|expire) my (?:login|credentials|creds|auth|password|token)/i, (request) ->
