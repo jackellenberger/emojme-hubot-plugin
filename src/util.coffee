@@ -2,6 +2,7 @@
 # gotta keep things tidy.
 
 emojme = require 'emojme'
+SlackClient = require('emojme/lib/slack-client')
 fs = require 'graceful-fs'
 glob = require 'glob'
 sharp = require 'sharp'
@@ -13,10 +14,23 @@ one_day = 1000 * 60 * 60 * 24
 emojiList = []
 
 module.exports = (robot) ->
-  ensure_no_public_tokens: (request, token) ->
+  ensure_no_public_tokens: (request, authJsonString) ->
     if request.message.room[0] == 'C'
-      slack.chat.delete({token: token, channel: request.message.room, ts: request.message.id})
-      request.send("Don't go posting slack auth tokens in public channels ya dummy. Delete that or I'm telling mom.")
+      try
+        authJson = JSON.parse(authJsonString)
+        token = authJson["token"]
+        cookie = authJson["cookie"]
+        subdomain = authJson["domain"] || authJson["subdomain"] || request.message.user.slack.team_id.replace(/:/g,'').trim()
+        slack = new SlackClient(subdomain, cookie)
+        if !(token and cookie)
+          throw "No Auth"
+        slack.request("/chat.delete", {token: token, channel: request.message.room, ts: request.message.id}).then (response) ->
+          if response.ok
+            request.send("Don't go posting slack auth tokens in public channels ya dummy. I went ahead and deleted it for you this time using your token that you just posted.")
+          else
+            request.send("Don't go posting slack auth tokens in public channels ya dummy. Delete that or I'm telling mom.")
+      catch
+        request.send("Don't go posting slack auth tokens in public channels ya dummy. Delete that or I'm telling mom.")
 
   emojme_download: (request, subdomain, token, cookie, action) ->
     self = this

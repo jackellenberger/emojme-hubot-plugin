@@ -30,7 +30,6 @@
 #
 # Author:
 #   Jack Ellenberger <jellenberger@uchicago.edu>
-slack = require 'slack'
 Conversation = require 'hubot-conversation'
 chrono = require('chrono-node')
 
@@ -52,9 +51,9 @@ Questions, comments, concerns? Ask em either on emojme, or on <https://github.co
 """)
 
 
-  robot.respond /(emojme|token).*(xoxs-\d{12}-\d{12}-\d{12}-\w{64})/i, (request) ->
-    token = request.match[1]
-    util.ensure_no_public_tokens request, token
+  robot.hear /{.*xoxc-\d{13}-\d{13}-\d{13}-\w{64}.*}/i, (request) ->
+    authJsonString = request.match[0]
+    util.ensure_no_public_tokens request, authJsonString
 
   robot.respond /emojme (?:forget|clear|expire) my (?:login|credentials|creds|auth|password|token)/i, (request) ->
     util.expire_user_auth request.envelope.user.id
