@@ -46,9 +46,9 @@ Hey there! emojme is an project made to interface with the dark parts of slack's
 
 In order to do anything with it here, you'll need to make sure that hubot knows about your list of emoji, which you can check on with `emojme status`.
 
-If there is no emoji cache or it's out of date, you can fix that with `@hubot emojme refresh`, that'll lead you by the hand to getting a cookie and a token and updating the list of emoji that I know about. There will be a 60 second time window to enter your cookie and token, so get a head start by checking out the docs [on the emojme repo](https://github.com/jackellenberger/emojme#finding-a-slack-token)
+If there is no emoji cache or it's out of date, you can fix that with `@hubot emojme refresh`, that'll lead you by the hand to getting a cookie and a token and updating the list of emoji that I know about. There will be a 60 second time window to enter your cookie and token, so get a head start by checking out the docs <https://github.com/jackellenberger/emojme#finding-a-slack-token|on the emojme repo>
 
-Questions, comments, concerns? Ask em either on emojme, or on [this project](https://github.com/jackellenberger/emojme-hubot-plugin), whatever's relevant.
+Questions, comments, concerns? Ask em either on emojme, or on <https://github.com/jackellenberger/emojme-hubot-plugin|this project>, whatever's relevant.
 """)
 
 
@@ -75,7 +75,7 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
     authJsonString = authResponse.match[1].trim()
     try
       authJson = JSON.parse(authJsonString)
-      token = authJson["domain"] || authJson["subdomain"]
+      subdomain = authJson["domain"] || authJson["subdomain"]
       token = authJson["token"]
       cookie = authJson["cookie"]
       if subdomain and token and cookie

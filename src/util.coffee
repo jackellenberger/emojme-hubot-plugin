@@ -108,7 +108,7 @@ module.exports = (robot) ->
     team_id = request.envelope.user.slack.team_id || request.message.user.slack.team_id || process.env.SLACK_TEAM_ID
     self.expire_user_auth user_id
     dialog = robot.emojmeConversation.startDialog request, 300000 # I know this isn't 60 seconds it's a joke
-    robot.send {room: user_id}, "Hey #{request.envelope.user.name}, in order to do what you've asked I'm gonna need a bit of authentication. Use the Emojme Chrome Extension]() to collect an auth blob, or read about how to collect your own [token](https://github.com/jackellenberger/emojme#finding-a-slack-token) and [cookie](https://github.com/jackellenberger/emojme#finding-a-slack-cookie). What I'm looking for is a json string, something like, `{\"token\":\"xoxc-...\",\"cookie\":\"long-inscrutible-string\"}` Just send that alone as message, please."
+    robot.send {room: user_id}, "Hey #{request.envelope.user.name}, in order to do what you've asked I'm gonna need a bit of authentication. Use the <https://chrome.google.com/webstore/detail/emojme-emoji-anywhere/nbnaglaclijdfidbinlcnfdbikpbdkog|Emojme Chrome Extension> to collect an auth blob, or read about how to collect your own <https://github.com/jackellenberger/emojme#finding-a-slack-token|token> and <https://github.com/jackellenberger/emojme#finding-a-slack-cookie|cookie>. What I'm looking for is a json string, something like, `{\"token\":\"xoxc-...\",\"cookie\":\"long-inscrutible-string\"}` Just send that alone as message, please."
     dialog.addChoice /({.*})/i, (authResponse) ->
       subdomain = request.message.user.slack.team_id.replace(/:/g,'').trim()
       authJsonString = authResponse.match[0].trim()
@@ -157,7 +157,7 @@ module.exports = (robot) ->
     self = this
     self.readAdminList (emojiList) ->
       if (
-        (emojiList = robot.brain.get 'emojme.AdminList' ) &&
+        (emojiList) &&
         (lastUser = robot.brain.get 'emojme.AuthUser' ) &&
         (lastRefresh = robot.brain.get 'emojme.LastUpdatedAt' )
       )
