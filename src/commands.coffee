@@ -30,7 +30,6 @@
 #
 # Author:
 #   Jack Ellenberger <jellenberger@uchicago.edu>
-slack = require 'slack'
 Conversation = require 'hubot-conversation'
 chrono = require('chrono-node')
 
@@ -46,15 +45,15 @@ Hey there! emojme is an project made to interface with the dark parts of slack's
 
 In order to do anything with it here, you'll need to make sure that hubot knows about your list of emoji, which you can check on with `emojme status`.
 
-If there is no emoji cache or it's out of date, you can fix that with `@hubot emojme refresh`, that'll lead you by the hand to getting a cookie and a token and updating the list of emoji that I know about. There will be a 60 second time window to enter your cookie and token, so get a head start by checking out the docs [on the emojme repo](https://github.com/jackellenberger/emojme#finding-a-slack-token)
+If there is no emoji cache or it's out of date, you can fix that with `@hubot emojme refresh`, that'll lead you by the hand to getting a cookie and a token and updating the list of emoji that I know about. There will be a 60 second time window to enter your cookie and token, so get a head start by checking out the docs <https://github.com/jackellenberger/emojme#finding-a-slack-token|on the emojme repo>
 
-Questions, comments, concerns? Ask em either on emojme, or on [this project](https://github.com/jackellenberger/emojme-hubot-plugin), whatever's relevant.
+Questions, comments, concerns? Ask em either on emojme, or on <https://github.com/jackellenberger/emojme-hubot-plugin|this project>, whatever's relevant.
 """)
 
 
-  robot.respond /(emojme|token).*(xoxs-\d{12}-\d{12}-\d{12}-\w{64})/i, (request) ->
-    token = request.match[1]
-    util.ensure_no_public_tokens request, token
+  robot.hear /{.*xoxc-\d{13}-\d{13}-\d{13}-\w{64}.*}/i, (request) ->
+    authJsonString = request.match[0].replace(/[“”]/g, '"')
+    util.ensure_no_public_tokens request, authJsonString
 
   robot.respond /emojme (?:forget|clear|expire) my (?:login|credentials|creds|auth|password|token)/i, (request) ->
     util.expire_user_auth request.envelope.user.id
@@ -62,7 +61,7 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
 
   robot.respond /emojme status/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
-      request.send("#{lastUser} last refreshed the emoji list back at #{Date(lastRefresh).toString()} when there were #{emojiList.length} emoji")
+      request.send("#{lastUser} last refreshed the emoji list back at #{new Date(lastRefresh)} when there were #{emojiList.length} emoji")
 
   robot.respond /emojme refresh$/i, (request) ->
     util.react request, "stand-by"
@@ -75,7 +74,7 @@ Questions, comments, concerns? Ask em either on emojme, or on [this project](htt
     authJsonString = authResponse.match[1].trim()
     try
       authJson = JSON.parse(authJsonString)
-      token = authJson["domain"] || authJson["subdomain"]
+      subdomain = authJson["domain"] || authJson["subdomain"]
       token = authJson["token"]
       cookie = authJson["cookie"]
       if subdomain and token and cookie

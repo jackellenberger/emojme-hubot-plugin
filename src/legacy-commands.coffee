@@ -6,17 +6,17 @@
 # Author:
 #   Jack Ellenberger <jellenberger@uchicago.edu>
 emojme = require 'emojme'
-slack = require 'slack'
+# slack = require 'slack'
 
 module.exports = (robot) ->
   robot.respond /emojme how do/i, (context) ->
     context.send("""
-Hey! [emojme](https://github.com/jackellenberger/emojme) is a project to mess with slack emoji.
+Hey! <https://github.com/jackellenberger/emojme|emojme> is a project to mess with slack emoji.
 In order to do anything with it here, you'll need to make sure that hubot knows about your emoji, which you can check on with `emojme status`.
 If there is no emoji cache or it's out of date, create a DM with hubot and write the following command:
   `emojme refresh with my super secret info that i will not post in any public channels: <YOUR AUTH JSON>`
 
-`<YOUR JSON>` is a combination of slack domain, cookie token, and cookie, all of which need to be grabbed from a logged in slack web page. This information is intentionally short-lived, so use it while you can!. [Find out how to find your auth info here](https://github.com/jackellenberger/emojme#finding-a-slack-token), but the easiest way is via the [Emojme Chrome Extension](https://chrome.google.com/webstore/detail/emojme-emoji-anywhere/nbnaglaclijdfidbinlcnfdbikpbdkog?hl=en-US).
+`<YOUR JSON>` is a combination of slack domain, cookie token, and cookie, all of which need to be grabbed from a logged in slack web page. This information is intentionally short-lived, so use it while you can!. <https://github.com/jackellenberger/emojme#finding-a-slack-token|Find out how to find your auth info here>, but the easiest way is via the <https://chrome.google.com/webstore/detail/emojme-emoji-anywhere/nbnaglaclijdfidbinlcnfdbikpbdkog?hl=en-US|Emojme Chrome Extension>.
 """)
 
 # Superceded by /emojme refresh with .*/

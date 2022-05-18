@@ -2,6 +2,7 @@
 # gotta keep things tidy.
 
 emojme = require 'emojme'
+SlackClient = require('emojme/lib/slack-client')
 fs = require 'graceful-fs'
 glob = require 'glob'
 sharp = require 'sharp'
@@ -13,10 +14,23 @@ one_day = 1000 * 60 * 60 * 24
 emojiList = []
 
 module.exports = (robot) ->
-  ensure_no_public_tokens: (request, token) ->
+  ensure_no_public_tokens: (request, authJsonString) ->
     if request.message.room[0] == 'C'
-      slack.chat.delete({token: token, channel: request.message.room, ts: request.message.id})
-      request.send("Don't go posting slack auth tokens in public channels ya dummy. Delete that or I'm telling mom.")
+      try
+        authJson = JSON.parse(authJsonString)
+        token = authJson["token"]
+        cookie = authJson["cookie"]
+        subdomain = authJson["domain"] || authJson["subdomain"] || request.message.user.slack.team_id.replace(/:/g,'').trim()
+        slack = new SlackClient(subdomain, cookie)
+        if !(token and cookie)
+          throw "No Auth"
+        slack.request("/chat.delete", {token: token, channel: request.message.room, ts: request.message.id}).then (response) ->
+          if response.ok
+            request.send("Don't go posting slack auth tokens in public channels ya dummy. I went ahead and deleted it for you this time using your token that you just posted.")
+          else
+            request.send("Don't go posting slack auth tokens in public channels ya dummy. Delete that or I'm telling mom.")
+      catch
+        request.send("Don't go posting slack auth tokens in public channels ya dummy. Delete that or I'm telling mom.")
 
   emojme_download: (request, subdomain, token, cookie, action) ->
     self = this
@@ -108,10 +122,10 @@ module.exports = (robot) ->
     team_id = request.envelope.user.slack.team_id || request.message.user.slack.team_id || process.env.SLACK_TEAM_ID
     self.expire_user_auth user_id
     dialog = robot.emojmeConversation.startDialog request, 300000 # I know this isn't 60 seconds it's a joke
-    robot.send {room: user_id}, "Hey #{request.envelope.user.name}, in order to do what you've asked I'm gonna need a bit of authentication. Use the Emojme Chrome Extension]() to collect an auth blob, or read about how to collect your own [token](https://github.com/jackellenberger/emojme#finding-a-slack-token) and [cookie](https://github.com/jackellenberger/emojme#finding-a-slack-cookie). What I'm looking for is a json string, something like, `{\"token\":\"xoxc-...\",\"cookie\":\"long-inscrutible-string\"}` Just send that alone as message, please."
-    dialog.addChoice /({.*})/i, (authResponse) ->
+    robot.send {room: user_id}, "Hey #{request.envelope.user.name}, in order to do what you've asked I'm gonna need a bit of authentication. Use the <https://chrome.google.com/webstore/detail/emojme-emoji-anywhere/nbnaglaclijdfidbinlcnfdbikpbdkog|Emojme Chrome Extension> to collect an auth blob, or read about how to collect your own <https://github.com/jackellenberger/emojme#finding-a-slack-token|token> and <https://github.com/jackellenberger/emojme#finding-a-slack-cookie|cookie>. What I'm looking for is a json string, something like, `{\"token\":\"xoxc-...\",\"cookie\":\"long-inscrutible-string\"}` Just send that alone as message, please."
+    dialog.addChoice /{.*}/i, (authResponse) ->
       subdomain = request.message.user.slack.team_id.replace(/:/g,'').trim()
-      authJsonString = authResponse.match[0].trim()
+      authJsonString = authResponse.match[0].replace(/[“”]/g, '"').trim()
 
       try
         authJson = JSON.parse(authJsonString)
@@ -157,7 +171,7 @@ module.exports = (robot) ->
     self = this
     self.readAdminList (emojiList) ->
       if (
-        (emojiList = robot.brain.get 'emojme.AdminList' ) &&
+        (emojiList) &&
         (lastUser = robot.brain.get 'emojme.AuthUser' ) &&
         (lastRefresh = robot.brain.get 'emojme.LastUpdatedAt' )
       )
