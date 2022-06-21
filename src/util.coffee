@@ -1,5 +1,6 @@
-# utilities to be used by commands
-# gotta keep things tidy.
+# Description:
+#   utilities to be used by commands
+#   gotta keep things tidy.
 
 emojme = require 'emojme'
 SlackClient = require('emojme/lib/slack-client')
