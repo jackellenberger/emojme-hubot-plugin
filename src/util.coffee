@@ -171,11 +171,8 @@ module.exports = (robot) ->
   require_cache: (request, action) ->
     self = this
     self.readAdminList (emojiList) ->
-      if (
-        (emojiList) &&
-        (lastUser = robot.brain.get 'emojme.AuthUser' ) &&
-        (lastRefresh = robot.brain.get 'emojme.LastUpdatedAt' )
-      )
+      if (emojiList && (lastRefresh = robot.brain.get 'emojme.LastUpdatedAt'))
+        lastUser = robot.brain.get('emojme.AuthUser') || 'fs-fallback'
         action emojiList, lastUser, lastRefresh
       else
         request.send "The emoji cache has gone missing, would you mind updating it? I've sent you few instructions."
