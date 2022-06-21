@@ -24,7 +24,7 @@
 #   hubot emojme [19] what emoji are documented? - give the names of all documented emoji
 #   hubot emojme [20] alias :<existing>: to :<new-alias>: - create a new emoji directly from slack sort of
 #   hubot emojme [21] forget my login - delete cached user token. If not touched a login expires in 24 hours
-#   hubot emojme [22] double enhance :<emoji>: - enhance the emoji to 512x512. gifs only give the first frame. s/o to @kevkid
+#   hubot emojme [22] double enhance :<emoji>: (to ###px) - enhance the emoji to 512x512 or a given size. s/o to @kevkid
 #   hubot emojme [23] add :<emoji>: url - create a new emoji using the given image, make sure the url ends in the format
 #   hubot emojme [24] who's responsible for :<emoji>: - the same as "who made," but sassier
 #
@@ -32,12 +32,15 @@
 #   Jack Ellenberger <jellenberger@uchicago.edu>
 Conversation = require 'hubot-conversation'
 chrono = require('chrono-node')
+{ WebClient } = require '@slack/client'
+fs = require 'graceful-fs'
 
 Util = require './util'
 
 module.exports = (robot) ->
   util = new Util robot
   robot.emojmeConversation = new Conversation robot
+  web = new WebClient robot.adapter.options.token
 
   robot.respond /emojme help/i, (request) ->
     request.send("""
@@ -173,17 +176,21 @@ Questions, comments, concerns? Ask em either on emojme, or on <https://github.co
       util.find_emoji request, emojiList, request.match[1].replace(/:/g,''), (emoji, _) ->
         request.send("#{emoji.url}?x=#{Date.now()}")
 
-  robot.respond /emojme double enhance :(.*?):/i, (request) ->
+  robot.respond /emojme (?:double|super) enhance[!1]* :(.*?):(?: to (\d+)(?: ?pixels| ?px))?/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
       util.find_emoji request, emojiList, request.match[1].replace(/:/g,''), (emoji, _) ->
         util.react request, "stand-by"
-        util.doubleEnhance emoji.url, emoji.name, (filename, enhanced_image_file_stream) ->
+        size = parseInt(request.match[2]) || 512
+        util.doubleEnhance emoji.url, emoji.name, size, (filename, enhanced_image_file_stream) ->
           opts = {
             title: "#{emoji.name} ENHANCE!!1!",
+            filename: filename,
             file: enhanced_image_file_stream,
             channels: request.message.room
           }
-          robot.adapter.client.web.files.upload(filename, opts)
+          web.files.upload(opts).finally ->
+            fs.unlinkSync filename
+
 
   robot.respond /emojme (?:who made|who(?:\'s| is) responsible for) (?:the )?:(.*?):(?: emoji)?\??/i, (request) ->
     util.require_cache request, (emojiList, lastUser, lastRefresh) ->
