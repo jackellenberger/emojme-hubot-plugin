@@ -1,6 +1,6 @@
 {
   "name": "emojme-hubot-plugin",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "a hubot script to run emojme tasks from slack",
   "main": "index.coffee",
   "scripts": {},
@@ -24,12 +24,13 @@
   },
   "homepage": "https://github.com/jackellenberger/emojme-hubot-plugin#readme",
   "dependencies": {
+    "@slack/client": "^5.0.2",
     "chrono-node": "^2.3.1",
     "emojme": "^2.0.1",
     "glob": "^7.1.6",
     "hubot-conversation": "^1.1.1",
     "request": "^2.88.2",
-    "sharp": "^0.25.4"
+    "sharp": "^0.30.6"
   },
   "peerDependencies": {
     "hubot": "^3.3.0"

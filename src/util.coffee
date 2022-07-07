@@ -1,5 +1,6 @@
-# utilities to be used by commands
-# gotta keep things tidy.
+# Description:
+#   utilities to be used by commands
+#   gotta keep things tidy.
 
 emojme = require 'emojme'
 SlackClient = require('emojme/lib/slack-client')
@@ -170,11 +171,8 @@ module.exports = (robot) ->
   require_cache: (request, action) ->
     self = this
     self.readAdminList (emojiList) ->
-      if (
-        (emojiList) &&
-        (lastUser = robot.brain.get 'emojme.AuthUser' ) &&
-        (lastRefresh = robot.brain.get 'emojme.LastUpdatedAt' )
-      )
+      if (emojiList && (lastRefresh = robot.brain.get 'emojme.LastUpdatedAt'))
+        lastUser = robot.brain.get('emojme.AuthUser') || 'fs-fallback'
         action emojiList, lastUser, lastRefresh
       else
         request.send "The emoji cache has gone missing, would you mind updating it? I've sent you few instructions."
@@ -288,13 +286,13 @@ module.exports = (robot) ->
       else
         action null
 
-  doubleEnhance: (url, name, action) ->
+  doubleEnhance: (url, name, size, action) ->
     request {url, encoding: null}, (err, res, body) ->
       if err
         console.log("[ERROR] error grabbing url: #{url} #{err.message}")
       type = url.split(".").pop()
       filename = "build/#{name}_#{Date.now()}.#{type}"
-      sharp(body).resize(512, 512).toFile filename, (err, info) ->
+      sharp(body, { animated: true }).resize(size, size).toFile filename, (err, info) ->
         if err
           console.log("[ERROR] scaling emoji: #{name} #{err.message}")
         console.log("wrote out #{filename}")
