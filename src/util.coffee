@@ -120,18 +120,18 @@ module.exports = (robot) ->
   collect_new_auth: (request, action) ->
     self = this
     user_id = request.envelope.user.id
-    team_id = request.envelope.user.slack.team_id || request.message.user.slack.team_id || process.env.SLACK_TEAM_ID
     self.expire_user_auth user_id
     dialog = robot.emojmeConversation.startDialog request, 300000 # I know this isn't 60 seconds it's a joke
     robot.send {room: user_id}, "Hey #{request.envelope.user.name}, in order to do what you've asked I'm gonna need a bit of authentication. Use the <https://chrome.google.com/webstore/detail/emojme-emoji-anywhere/nbnaglaclijdfidbinlcnfdbikpbdkog|Emojme Chrome Extension> to collect an auth blob, or read about how to collect your own <https://github.com/jackellenberger/emojme#finding-a-slack-token|token> and <https://github.com/jackellenberger/emojme#finding-a-slack-cookie|cookie>. What I'm looking for is a json string, something like, `{\"token\":\"xoxc-...\",\"cookie\":\"long-inscrutible-string\"}` Just send that alone as message, please."
     dialog.addChoice /{.*}/i, (authResponse) ->
-      subdomain = request.message.user.slack.team_id.replace(/:/g,'').trim()
+      user = await self.get_slack_user user_id
       authJsonString = authResponse.match[0].replace(/[“”]/g, '"').trim()
 
       try
         authJson = JSON.parse(authJsonString)
         token = authJson["token"]
         cookie = authJson["cookie"]
+        subdomain = authJson["domain"] || authJson["subdomain"] || user.slack.team_id.replace(/:/g,'').trim()
         if subdomain and token and cookie
           robot.send {room: user_id}, "Thanks! Carrying on back at #{self.message_url request}"
         else
@@ -297,3 +297,6 @@ module.exports = (robot) ->
           console.log("[ERROR] scaling emoji: #{name} #{err.message}")
         console.log("wrote out #{filename}")
         action filename, fs.createReadStream(filename)
+
+  get_slack_user: (user_id) ->
+    return await robot.adapter.client.fetchUser user_id
