@@ -32,7 +32,7 @@
 #   Jack Ellenberger <jellenberger@uchicago.edu>
 Conversation = require 'hubot-conversation'
 chrono = require('chrono-node')
-{ WebClient } = require '@slack/client'
+{ WebClient } = require '@slack/web-api'
 fs = require 'graceful-fs'
 
 Util = require './util'
@@ -139,9 +139,10 @@ Questions, comments, concerns? Ask em either on emojme, or on <https://github.co
       # Give metadata if asked for, otherwise just emoji names
       content = if request.match[1] then emojiList else emojiList.map((emoji) -> emoji.name)
       try
-        robot.adapter.client.web.files.upload('adminList.txt', {
+        web.filesUploadV2({
           content: JSON.stringify(content, null, 2),
-          channels: request.message.room,
+          filename: 'adminList.txt',
+          channel_id: request.message.room,
           initial_comment: "Here are the emoji as of #{lastRefresh}"
         })
       catch
@@ -186,9 +187,9 @@ Questions, comments, concerns? Ask em either on emojme, or on <https://github.co
             title: "#{emoji.name} ENHANCE!!1!",
             filename: filename,
             file: enhanced_image_file_stream,
-            channels: request.message.room
+            channel_id: request.message.room
           }
-          web.files.upload(opts).finally ->
+          web.filesUploadV2(opts).finally ->
             fs.unlinkSync filename
 
 
