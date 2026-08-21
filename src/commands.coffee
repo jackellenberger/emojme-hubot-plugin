@@ -74,7 +74,7 @@ Questions, comments, concerns? Ask em either on emojme, or on <https://github.co
         request.send("emoji database refresh complete, found #{emojiList.length} of em. :nice:")
 
   robot.respond /emojme refresh with (.*)/i, (request) ->
-    authJsonString = authResponse.match[1].trim()
+    authJsonString = request.match[1].trim()
     try
       authJson = JSON.parse(authJsonString)
       subdomain = authJson["domain"] || authJson["subdomain"]
@@ -82,11 +82,11 @@ Questions, comments, concerns? Ask em either on emojme, or on <https://github.co
       cookie = authJson["cookie"]
       if subdomain and token and cookie
         util.emojme_download request, subdomain, token, cookie, (emojiList, lastUser, lastUpdate) ->
-        request.send("emoji database refresh complete, found #{emojiList.length} of em. :nice:")
+          request.send("emoji database refresh complete, found #{emojiList.length} of em. :nice:")
       else
         throw "Could not determine subdomain, token, and cookie. Malformed input?"
     catch
-      robot.send {room: user_id}, "Bad news, that didn't work out. Maybe try again? Remember, auth now looks like a json blob, and you need both a token _and_ a cookie."
+      request.send("Bad news, that didn't work out. Maybe try again? Remember, auth now looks like a json blob, and you need both a token _and_ a cookie.")
 
   robot.respond /emojme (?:what are |show me )?my (\d* )?(?:favorites?|most used)(?: emoji)?\??/i, (request) ->
     count = parseInt (request.match[1] || "10").trim(), 10
